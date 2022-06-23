@@ -69,7 +69,6 @@ QQ群：909211071
 - rpc
   - bootstrap //应用启动
   - client
-    - codec //编码
     - grpc //grpc客户端
     - http //http客户端
   - server
@@ -81,7 +80,6 @@ QQ群：909211071
     - cache //分布式缓存
     - config //配置加载
     - cron //任务调度
-    - endless //endless
     - etcd //etcd
     - grpc //grpc封装
     - jaeger //jaeger分布式链路追踪
