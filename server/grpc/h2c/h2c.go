@@ -2,12 +2,10 @@ package h2c
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
@@ -18,7 +16,8 @@ import (
 )
 
 type Option struct {
-	logger logger.Logger
+	logger      logger.Logger
+	httpHandler http.Handler
 }
 
 type OptionFunc func(*Option)
@@ -27,32 +26,40 @@ func WithLogger(l logger.Logger) OptionFunc {
 	return func(s *Option) { s.logger = l }
 }
 
+func WithHTTPHandler(h http.Handler) OptionFunc {
+	return func(s *Option) { s.httpHandler = h }
+}
+
+func defaultOption() *Option {
+	return &Option{httpHandler: http.NotFoundHandler()}
+}
+
 type H2CServer struct {
 	*Option
 	*grpc.Server
-	ctx        context.Context
-	endpoint   string
-	registers  []serverGRPC.Register
-	httpServer *http.Server
+	ctx           context.Context
+	endpoint      string
+	grpcRegisters []serverGRPC.RegisterGRPC
+	httpServer    *http.Server
 }
 
 var _ server.Server = (*H2CServer)(nil)
 
-func NewH2C(endpoint string, registers []serverGRPC.Register, opts ...OptionFunc) *H2CServer {
-	if len(registers) < 1 {
-		panic("len(registers) < 1")
+func NewH2C(ctx context.Context, endpoint string, grpcRegisters []serverGRPC.RegisterGRPC, opts ...OptionFunc) *H2CServer {
+	if len(grpcRegisters) < 1 {
+		panic("len(grpcRegisters) < 1")
 	}
 
-	option := &Option{}
+	option := defaultOption()
 	for _, o := range opts {
 		o(option)
 	}
 
 	s := &H2CServer{
-		Option:    option,
-		ctx:       context.Background(),
-		endpoint:  endpoint,
-		registers: registers,
+		Option:        option,
+		ctx:           ctx,
+		endpoint:      endpoint,
+		grpcRegisters: grpcRegisters,
 	}
 
 	return s
@@ -61,19 +68,9 @@ func NewH2C(endpoint string, registers []serverGRPC.Register, opts ...OptionFunc
 func (s *H2CServer) Start() (err error) {
 	grpcServer := grpc.NewServer(serverGRPC.NewServerOption(serverGRPC.ServerOptionLogger(s.logger))...)
 
-	mux := http.NewServeMux()
-	gwmux := runtime.NewServeMux()
-	mux.Handle("/", gwmux)
-
-	for _, r := range s.registers {
-		if r.RegisterGRPC == nil {
-			return errors.New("r.RegisterGRPC nil")
-		}
-
-		r.RegisterGRPC(grpcServer)
-		if err = r.RegisterMux(s.ctx, gwmux, s.endpoint, serverGRPC.NewDialOption()); err != nil {
-			return
-		}
+	// register grpc server
+	for _, r := range s.grpcRegisters {
+		r(grpcServer)
 	}
 
 	serverGRPC.RegisterTools(grpcServer)
@@ -86,7 +83,7 @@ func (s *H2CServer) Start() (err error) {
 			if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
 				grpcServer.ServeHTTP(w, r)
 			} else {
-				mux.ServeHTTP(w, r)
+				s.httpHandler.ServeHTTP(w, r)
 			}
 		}), &http2.Server{}),
 	}
