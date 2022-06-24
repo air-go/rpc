@@ -7,9 +7,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/soheilhy/cmux"
-	"github.com/why444216978/go-util/assert"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/air-go/rpc/library/logger"
 	"github.com/air-go/rpc/server"
@@ -21,51 +19,51 @@ type (
 )
 
 type Option struct {
-	logger       logger.Logger
-	registerHTTP RegisterHTTP
-	httpServer   *http.Server
+	logger      logger.Logger
+	httpHandler http.Handler
 }
 
 type OptionFunc func(*Option)
 
-func WithHTTP(httpServer *http.Server, registerHTTP RegisterHTTP) OptionFunc {
-	return func(s *Option) {
-		s.httpServer = httpServer
-		s.registerHTTP = registerHTTP
-	}
+func WithHTTPHandler(h http.Handler) OptionFunc {
+	return func(s *Option) { s.httpHandler = h }
 }
 
-type CMUXServer struct {
+func defaultOption() *Option {
+	return &Option{httpHandler: http.NotFoundHandler()}
+}
+
+type MuxServer struct {
 	*Option
-	ctx       context.Context
-	endpoint  string
-	registers []serverGRPC.Register
-	tcpMux    cmux.CMux
+	ctx           context.Context
+	endpoint      string
+	grpcRegisters []serverGRPC.RegisterGRPC
+	tcpMux        cmux.CMux
 }
 
-var _ server.Server = (*CMUXServer)(nil)
+var _ server.Server = (*MuxServer)(nil)
 
-func NewCMUX(endpoint string, registers []serverGRPC.Register, opts ...OptionFunc) *CMUXServer {
-	if len(registers) < 1 {
+func NewMux(ctx context.Context, endpoint string, grpcRegisters []serverGRPC.RegisterGRPC, opts ...OptionFunc) *MuxServer {
+	if len(grpcRegisters) < 1 {
 		panic("len(registers) < 1")
 	}
 
-	option := &Option{}
+	option := defaultOption()
 	for _, o := range opts {
 		o(option)
 	}
 
-	s := &CMUXServer{
-		Option:    option,
-		ctx:       context.Background(),
-		registers: registers,
-		endpoint:  endpoint,
+	s := &MuxServer{
+		Option:        option,
+		ctx:           ctx,
+		grpcRegisters: grpcRegisters,
+		endpoint:      endpoint,
 	}
 
 	return s
 }
 
-func (s *CMUXServer) Start() (err error) {
+func (s *MuxServer) Start() (err error) {
 	listener, err := net.Listen("tcp", s.endpoint)
 	if err != nil {
 		return
@@ -78,14 +76,11 @@ func (s *CMUXServer) Start() (err error) {
 	return s.tcpMux.Serve()
 }
 
-func (s *CMUXServer) startGRPC() {
+func (s *MuxServer) startGRPC() {
 	grpcServer := grpc.NewServer(serverGRPC.NewServerOption(serverGRPC.ServerOptionLogger(s.logger))...)
 
-	for _, r := range s.registers {
-		if r.RegisterGRPC == nil {
-			panic("r.RegisterGRPC == nil")
-		}
-		r.RegisterGRPC(grpcServer)
+	for _, r := range s.grpcRegisters {
+		r(grpcServer)
 	}
 
 	serverGRPC.RegisterTools(grpcServer)
@@ -96,52 +91,25 @@ func (s *CMUXServer) startGRPC() {
 	}
 }
 
-func (s *CMUXServer) startHTTP() (err error) {
+func (s *MuxServer) startHTTP() {
+	var err error
 	defer func() {
 		if err != nil {
 			panic(err)
 		}
 	}()
 
-	if assert.IsNil(s.registerHTTP) {
-		return
+	httpServer := &http.Server{
+		Addr:    s.endpoint,
+		Handler: s.httpHandler,
 	}
-
-	if assert.IsNil(s.httpServer) {
-		panic("httpServer is nil")
-	}
-
-	grpcConn, err := grpc.DialContext(s.ctx, s.endpoint, serverGRPC.NewDialOption()...)
-	if err != nil {
-		return
-	}
-
-	mux := runtime.NewServeMux(
-		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
-			MarshalOptions: protojson.MarshalOptions{
-				UseProtoNames:  true,
-				UseEnumNumbers: true,
-			},
-		}),
-		runtime.WithErrorHandler(runtime.DefaultHTTPErrorHandler),
-	)
-	if err = s.registerHTTP(s.ctx, mux, grpcConn); err != nil {
-		return
-	}
-
-	router := http.NewServeMux()
-	router.Handle("/", mux)
-	s.httpServer.Addr = s.endpoint
-	s.httpServer.Handler = router
 	listener := s.tcpMux.Match(cmux.HTTP1Fast())
-	if err = s.httpServer.Serve(listener); err != nil {
+	if err = httpServer.Serve(listener); err != nil {
 		return
 	}
-
-	return
 }
 
-func (s *CMUXServer) Close() (err error) {
+func (s *MuxServer) Close() (err error) {
 	s.tcpMux.Close()
 	return
 }
