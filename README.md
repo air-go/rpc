@@ -6,6 +6,8 @@
 # rpc
 
 [![workflows](https://github.com/air-go/rpc/workflows/Go/badge.svg)](https://github.com/air-go/rpc/actions?query=workflow%3AGo)
+[![Go Report Card](https://goreportcard.com/badge/github.com/air-go/rpc)](https://goreportcard.com/report/github.com/air-go/rpc)
+[![codecov](https://codecov.io/gh/air-go/rpc/branch/master/graph/badge.svg)](https://app.codecov.io/gh/air-go/rpc/branch/master)
 
 Go 微服务框架，同时支持 gRPC 和 HTTP，封装各种常用组件，开箱即用，专注业务。
 <br><br>

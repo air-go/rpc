@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/why444216978/go-util/conversion"
 	"github.com/why444216978/go-util/snowflake"
 )
 
@@ -23,13 +22,12 @@ func ExtractLogID(req *http.Request) string {
 }
 
 // GetRequestBody get http request body
-func GetRequestBody(req *http.Request) map[string]interface{} {
+func GetRequestBody(req *http.Request) []byte {
 	reqBody := []byte{}
-	if req.Body != nil { // Read
+	if req.Body != nil {
 		reqBody, _ = ioutil.ReadAll(req.Body)
 	}
-	reqBodyMap, _ := conversion.JsonToMap(string(reqBody))
 	req.Body = ioutil.NopCloser(bytes.NewBuffer(reqBody)) // Reset
 
-	return reqBodyMap
+	return reqBody
 }

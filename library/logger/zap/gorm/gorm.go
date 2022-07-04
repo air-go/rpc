@@ -105,7 +105,7 @@ func (l *GormLogger) Warn(ctx context.Context, msg string, args ...interface{}) 
 func (l *GormLogger) Error(ctx context.Context, msg string, args ...interface{}) {}
 
 func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
-	if l.LogLevel <= 0 {
+	if l.LogLevel <= gormLogger.Silent {
 		return
 	}
 
@@ -127,18 +127,21 @@ func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (stri
 		zap.String(logger.Request, sql),
 		zap.Int64(logger.Response, rows),
 		zap.String(logger.API, api),
-		zap.Reflect(logger.ClientIP, logger.Find(logger.ServerIP, fields)),
-		zap.Reflect(logger.ClientPort, logger.Find(logger.ServerPort, fields)),
+		zap.Reflect(logger.ClientIP, logger.Find(logger.ServerIP, fields).Value()),
+		zap.Reflect(logger.ClientPort, logger.Find(logger.ServerPort, fields).Value()),
 	}
 
-	switch {
-	case err != nil && l.LogLevel >= gormLogger.Error && (!l.IgnoreRecordNotFoundError || !errors.Is(err, gorm.ErrRecordNotFound)):
+	if err != nil && l.LogLevel >= gormLogger.Error && (!l.IgnoreRecordNotFoundError || !errors.Is(err, gorm.ErrRecordNotFound)) {
 		l.logger().Error(err.Error(), f...)
-	case l.SlowThreshold != 0 && elapsed > l.SlowThreshold && l.LogLevel >= gormLogger.Warn:
-		l.logger().Warn("warn", f...)
-	case l.LogLevel >= gormLogger.Info:
-		l.logger().Info("info", f...)
+		return
 	}
+
+	if l.SlowThreshold != 0 && elapsed > l.SlowThreshold {
+		l.logger().Warn("warn", f...)
+		return
+	}
+
+	l.logger().Info("info", f...)
 }
 
 func (l *GormLogger) logger() *zap.Logger {
@@ -146,8 +149,8 @@ func (l *GormLogger) logger() *zap.Logger {
 		_, file, _, ok := runtime.Caller(i)
 		switch {
 		case !ok:
-		case strings.Contains(file, "gorm.io"):
-		case strings.Contains(file, "go-util/orm/orm.go"):
+		case strings.Contains(file, "gorm.io"): // skip gorm source file deep
+		case strings.Contains(file, "go-util/orm/orm.go"): // skip gorm util file deep
 		default:
 			return l.Logger.WithOptions(zap.AddCallerSkip(i - 2))
 		}

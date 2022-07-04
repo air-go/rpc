@@ -32,7 +32,7 @@ type RedisConfig struct {
 
 // RedisLogger is go-redis logger Hook
 type RedisLogger struct {
-	*zapLogger.ZapLogger
+	log    *zapLogger.ZapLogger
 	config *RedisConfig
 }
 
@@ -62,7 +62,7 @@ func NewRedisLogger(config *RedisConfig, opts ...RedisOption) (rl *RedisLogger, 
 	if err != nil {
 		return
 	}
-	rl.ZapLogger = l
+	rl.log = l
 
 	return
 }
@@ -75,7 +75,7 @@ func (rl *RedisLogger) BeforeProcess(ctx context.Context, cmd redis.Cmder) (cont
 
 // AfterProcess redis after execute action do something
 func (rl *RedisLogger) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
-	if rl.Logger == nil {
+	if rl.logger() == nil {
 		return nil
 	}
 
@@ -98,7 +98,7 @@ func (rl *RedisLogger) BeforeProcessPipeline(ctx context.Context, cmds []redis.C
 
 // AfterProcessPipeline after command process handle
 func (rl *RedisLogger) AfterProcessPipeline(ctx context.Context, cmds []redis.Cmder) error {
-	if rl.Logger == nil {
+	if rl.logger() == nil {
 		return nil
 	}
 	cost := rl.getCmdCost(ctx)
@@ -160,8 +160,8 @@ func (rl *RedisLogger) fields(ctx context.Context, isPipeline bool, cmds []redis
 		logger.Reflect(logger.Request, args),
 		logger.Reflect(logger.Response, response),
 		logger.Reflect(logger.Code, 0),
-		logger.Reflect(logger.ClientIP, logger.Find(logger.ServerIP, fields)),
-		logger.Reflect(logger.ClientPort, logger.Find(logger.ServerPort, fields)),
+		logger.Reflect(logger.ClientIP, logger.Find(logger.ServerIP, fields).Value()),
+		logger.Reflect(logger.ClientPort, logger.Find(logger.ServerPort, fields).Value()),
 		logger.Reflect(logger.ServerIP, rl.config.Host),
 		logger.Reflect(logger.ServerPort, rl.config.Port),
 		logger.Reflect(logger.API, method),
@@ -174,7 +174,7 @@ func (rl *RedisLogger) fields(ctx context.Context, isPipeline bool, cmds []redis
 }
 
 func (rl *RedisLogger) logger() *zapLogger.ZapLogger {
-	return rl.ZapLogger
+	return rl.log
 }
 
 func (rl *RedisLogger) setCmdStart(ctx context.Context) context.Context {
@@ -182,5 +182,9 @@ func (rl *RedisLogger) setCmdStart(ctx context.Context) context.Context {
 }
 
 func (rl *RedisLogger) getCmdCost(ctx context.Context) int64 {
-	return time.Since(ctx.Value(cmdStart).(time.Time)).Milliseconds()
+	t, ok := ctx.Value(cmdStart).(time.Time)
+	if !ok {
+		t = time.Now()
+	}
+	return time.Since(t).Milliseconds()
 }
