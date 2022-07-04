@@ -86,11 +86,11 @@ func Error(err error) Field {
 	return &field{key: "error", value: err}
 }
 
-func Find(key string, fields []Field) interface{} {
+func Find(key string, fields []Field) Field {
 	for _, f := range fields {
 		if f.Key() == key {
-			return f.Value()
+			return f
 		}
 	}
-	return ""
+	return &field{"nil", "nil"}
 }

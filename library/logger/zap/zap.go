@@ -104,18 +104,22 @@ func NewLogger(options ...Option) (l *ZapLogger, err error) {
 
 func (l *ZapLogger) infoEnabler() zap.LevelEnablerFunc {
 	return zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+		// current write level less than logger level, not write
 		if lvl < zapLevel(l.opts.level) {
 			return false
 		}
+		// current write level must less than or equal to info
 		return lvl <= zapcore.InfoLevel
 	})
 }
 
 func (l *ZapLogger) errorEnabler() zap.LevelEnablerFunc {
 	return zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+		// current write level less than logger level, not write
 		if lvl < zapLevel(l.opts.level) {
 			return false
 		}
+		// current write level must large than or equal to warn
 		return lvl >= zapcore.WarnLevel
 	})
 }
