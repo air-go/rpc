@@ -5,7 +5,7 @@
 
 # rpc
 
-[![workflows](https://github.com/air-go/rpc/workflows/Go/badge.svg)](https://github.com/air-go/rpc/actions?query=workflow%3AGo)
+[![workflows](https://github.com/air-go/rpc/workflows/Go/badge.svg)](https://github.com/air-go/rpc/actions?query=workflow%3AGo+branch%3Amaster)
 [![Go Report Card](https://goreportcard.com/badge/github.com/air-go/rpc)](https://goreportcard.com/report/github.com/air-go/rpc)
 [![codecov](https://codecov.io/gh/air-go/rpc/branch/master/graph/badge.svg)](https://app.codecov.io/gh/air-go/rpc/branch/master)
 
