@@ -59,7 +59,9 @@ func ValueFields(ctx context.Context) []Field {
 }
 
 func AddField(ctx context.Context, fields ...Field) context.Context {
-	f := ValueFields(ctx)
-	f = append(f, fields...)
-	return WithFields(ctx, f)
+	old := ValueFields(ctx)
+	new := make([]Field, 0, len(old)+len(fields))
+	new = append(new, old...)
+	new = append(new, fields...)
+	return WithFields(ctx, new)
 }

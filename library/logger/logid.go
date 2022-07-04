@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -27,26 +28,6 @@ var (
 	// to NewObjectID function.
 	machineID = initMachineID()
 )
-
-// StrToObjectID string id to object
-func StrToObjectID(str string) (ObjectID, error) {
-	var b [12]byte
-	byteArr, err := hex.DecodeString(str)
-	if err != nil {
-		return b, err
-	}
-
-	i := 0
-	for {
-		if i == 12 {
-			break
-		}
-		b[i] = byteArr[i]
-		i++
-	}
-
-	return b, nil
-}
 
 // readMachineId generates machine id and puts it into the machineID global
 // variable. If this function fails to get the hostname, it will cause
@@ -103,6 +84,7 @@ func NewObjectIDWithTime(t time.Time) ObjectID {
 func NewObjectIDWithHexString(s string) (o ObjectID, err error) {
 	d, err := hex.DecodeString(s)
 	if err != nil || len(d) != 12 {
+		err = errors.New("string length must 12")
 		return
 	}
 	copy(o[:], d[:12])
