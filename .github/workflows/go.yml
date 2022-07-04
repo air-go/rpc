@@ -1,4 +1,4 @@
-name: Tests
+name: Go
 
 on: [push, pull_request]
 
@@ -26,7 +26,16 @@ jobs:
           # go install mvdan.cc/gofumpt@v0.2.0
           # test -z "$(gofumpt -l -extra .)" 
       - name: Unit Test
-        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+        run: go test -v -race -covermode=atomic -coverprofile=coverage.txt ./...
+        
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.txt
+          fail_ci_if_error: true
+          verbose: true
+
 
   benchmark:
     runs-on: ubuntu-latest
