@@ -32,5 +32,5 @@ func ExtractConf(namespace, content string, conf interface{}) error {
 		return xmlCodec.Decode(bytes.NewReader([]byte(content)), conf)
 	}
 
-	return errors.New("namespace ext error")
+	return errors.New("namespace ext illegal")
 }
