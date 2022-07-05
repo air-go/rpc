@@ -44,28 +44,28 @@ func Debug() bool {
 
 func ContextTimeout() time.Duration {
 	if app.ConnectTimeout == 0 {
-		return time.Duration(100000) * time.Millisecond
+		return time.Duration(1000) * time.Millisecond
 	}
 	return time.Duration(app.ContextTimeout) * time.Millisecond
 }
 
 func ConnectTimeout() time.Duration {
 	if app.ConnectTimeout == 0 {
-		return time.Duration(100000) * time.Millisecond
+		return time.Duration(1000) * time.Millisecond
 	}
 	return time.Duration(app.ConnectTimeout) * time.Millisecond
 }
 
 func WriteTimeout() time.Duration {
 	if app.WriteTimeout == 0 {
-		return time.Duration(100000) * time.Millisecond
+		return time.Duration(1000) * time.Millisecond
 	}
 	return time.Duration(app.WriteTimeout) * time.Millisecond
 }
 
 func ReadTimeout() time.Duration {
 	if app.ReadTimeout == 0 {
-		return time.Duration(100000) * time.Millisecond
+		return time.Duration(1000) * time.Millisecond
 	}
 	return time.Duration(app.ReadTimeout) * time.Millisecond
 }
