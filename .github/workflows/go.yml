@@ -26,7 +26,7 @@ jobs:
           # go install mvdan.cc/gofumpt@v0.2.0
           # test -z "$(gofumpt -l -extra .)" 
       - name: Unit Test
-        run: go test -v -race -covermode=atomic -coverprofile=coverage.txt ./...
+        run: go test -v -race -gcflags=-l -cover $(/usr/local/go16/bin/go list ./... | grep -vE "vendor" | grep -vE "mock") -covermode=atomic -coverprofile=coverage.txt ./...
         
       - name: Codecov
         uses: codecov/codecov-action@v3
