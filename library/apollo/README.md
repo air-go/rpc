@@ -6,8 +6,8 @@ package agollo
 import (
 	"context"
 
-	"github.com/air-go/rpc/library/apollo/agollo/listener"
-	"github.com/air-go/rpc/library/apollo/agollo/listener/structlistener"
+	"github.com/air-go/rpc/library/apollo/listener"
+	"github.com/air-go/rpc/library/apollo/listener/structlistener"
 )
 
 type Conf struct {
