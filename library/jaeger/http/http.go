@@ -49,7 +49,7 @@ func ExtractHTTP(ctx context.Context, req *http.Request, logID string) (context.
 // InjectHTTP is used to inject HTTP span
 func InjectHTTP(ctx context.Context, req *http.Request, logID string) error {
 	if assert.IsNil(jaeger.Tracer) {
-		return ErrTracerNil
+		return nil
 	}
 
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, jaeger.Tracer, httpClientComponentPrefix+req.URL.Path, ext.SpanKindRPCClient)

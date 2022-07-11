@@ -3,7 +3,6 @@ package job
 import (
 	"context"
 	"log"
-	"os"
 
 	"github.com/pkg/errors"
 	"github.com/why444216978/go-util/assert"
@@ -28,10 +27,11 @@ func Handle(job string, l logger.Logger) {
 	}
 
 	err := handle(ctx)
-	if err != nil {
-		if !assert.IsNil(l) {
-			l.Error(ctx, errors.Wrap(err, "handle job "+job).Error())
-		}
-		os.Exit(1)
+	if err == nil {
+		return
+	}
+
+	if !assert.IsNil(l) {
+		l.Error(ctx, errors.Wrap(err, "handle job "+job).Error())
 	}
 }

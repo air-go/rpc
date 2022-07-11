@@ -28,13 +28,13 @@ jobs:
       - name: Unit Test
         run: go test -v -race -gcflags=-l -cover $(/usr/local/go16/bin/go list ./... | grep -vE "vendor" | grep -vE "mock") -covermode=atomic -coverprofile=coverage.txt ./...
         
-      - name: Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.txt
-          fail_ci_if_error: true
-          verbose: true
+      #- name: Codecov
+      #  uses: codecov/codecov-action@v3
+      #  with:
+      #    token: ${{ secrets.CODECOV_TOKEN }}
+      #    file: ./coverage.txt
+      #    fail_ci_if_error: true
+      #    verbose: true
 
 
   benchmark:
