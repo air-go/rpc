@@ -79,7 +79,8 @@ func (rc *RedisCache) GetData(ctx context.Context, key string, ttl time.Duration
 		return
 	}
 
-	ctxNew, _ := context.WithTimeout(utilCtx.RemoveCancel(ctx), time.Second*10)
+	ctxNew, cancel := context.WithTimeout(utilCtx.RemoveCancel(ctx), time.Second*10)
+	_ = cancel
 	go rc.FlushCache(ctxNew, key, ttl, virtualTTL, f, data)
 
 	return
