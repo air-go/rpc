@@ -8,8 +8,8 @@ import (
 
 	"github.com/air-go/rpc/library/lock"
 	redismock "github.com/go-redis/redismock/v8"
-
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -22,25 +22,25 @@ var (
 func TestNew(t *testing.T) {
 	r, _ := redismock.NewClientMock()
 
-	Convey("TestNew", t, func() {
-		Convey("success", func() {
+	convey.Convey("TestNew", t, func() {
+		convey.Convey("success", func() {
 			var err error
 
-			_rc, _err := New(r)
-			So(_rc.c, ShouldEqual, r)
-			So(_err, ShouldEqual, err)
+			rc, err := New(r)
+			assert.Nil(t, err)
+			assert.Equal(t, r, rc.c)
 		})
-		Convey("fail", func() {
-			_rc, _err := New(nil)
-			So(_rc, ShouldEqual, nil)
-			So(_err, ShouldEqual, lock.ErrClientNil)
+		convey.Convey("fail", func() {
+			rc, err := New(nil)
+			assert.Equal(t, lock.ErrClientNil, err)
+			assert.Nil(t, rc)
 		})
 	})
 }
 
 func TestRedisLock_Lock(t *testing.T) {
-	Convey("TestRedisLock_Lock", t, func() {
-		Convey("success", func() {
+	convey.Convey("TestRedisLock_Lock", t, func() {
+		convey.Convey("once success", func() {
 			r, rc := redismock.NewClientMock()
 			rl, _ := New(r)
 
@@ -48,9 +48,11 @@ func TestRedisLock_Lock(t *testing.T) {
 			expect.SetVal(true)
 			expect.SetErr(nil)
 
-			rl.Lock(ctx, key, val, duration)
+			ok, err := rl.Lock(ctx, key, val, duration, 1)
+			assert.Nil(t, err)
+			assert.Equal(t, true, ok)
 		})
-		Convey("fail error", func() {
+		convey.Convey("fail error", func() {
 			r, rc := redismock.NewClientMock()
 			rl, _ := New(r)
 
@@ -58,14 +60,61 @@ func TestRedisLock_Lock(t *testing.T) {
 			expect.SetVal(false)
 			expect.SetErr(errors.New("err"))
 
-			rl.Lock(ctx, key, val, duration)
+			ok, err := rl.Lock(ctx, key, val, duration, 3)
+			assert.NotNil(t, err)
+			assert.Equal(t, false, ok)
+		})
+		convey.Convey("fail ttl", func() {
+			r, rc := redismock.NewClientMock()
+			rl, _ := New(r)
+
+			expect := rc.ExpectSetNX(key, val, duration)
+			expect.SetVal(false)
+			expect.SetErr(nil)
+
+			ttl := rc.ExpectTTL(key)
+			ttl.SetVal(time.Millisecond)
+			ttl.SetErr(errors.New("err"))
+
+			ok, err := rl.Lock(ctx, key, val, duration, 3)
+			assert.NotNil(t, err)
+			assert.Equal(t, false, ok)
+		})
+		convey.Convey("fail try", func() {
+			r, rc := redismock.NewClientMock()
+			rl, _ := New(r)
+
+			set1 := rc.ExpectSetNX(key, val, duration)
+			set1.SetVal(false)
+			set1.SetErr(nil)
+
+			ttl1 := rc.ExpectTTL(key)
+			ttl1.SetVal(time.Millisecond)
+
+			set2 := rc.ExpectSetNX(key, val, duration)
+			set2.SetVal(false)
+			set2.SetErr(nil)
+
+			ttl2 := rc.ExpectTTL(key)
+			ttl2.SetVal(time.Millisecond)
+
+			set3 := rc.ExpectSetNX(key, val, duration)
+			set3.SetVal(false)
+			set3.SetErr(nil)
+
+			ttl3 := rc.ExpectTTL(key)
+			ttl3.SetVal(time.Millisecond)
+
+			ok, err := rl.Lock(ctx, key, val, duration, 3)
+			assert.Nil(t, err)
+			assert.Equal(t, false, ok)
 		})
 	})
 }
 
 func TestRedisLock_Unlock(t *testing.T) {
-	Convey("TestRedisLock_Unlock", t, func() {
-		Convey("success", func() {
+	convey.Convey("TestRedisLock_Unlock", t, func() {
+		convey.Convey("success", func() {
 			r, rc := redismock.NewClientMock()
 			rl, _ := New(r)
 
@@ -75,7 +124,7 @@ func TestRedisLock_Unlock(t *testing.T) {
 
 			rl.Unlock(ctx, key, val)
 		})
-		Convey("fail error", func() {
+		convey.Convey("fail error", func() {
 			r, rc := redismock.NewClientMock()
 			rl, _ := New(r)
 
@@ -84,7 +133,7 @@ func TestRedisLock_Unlock(t *testing.T) {
 
 			rl.Unlock(ctx, key, val)
 		})
-		Convey("fail result lockFail", func() {
+		convey.Convey("fail result lockFail", func() {
 			r, rc := redismock.NewClientMock()
 			rl, _ := New(r)
 

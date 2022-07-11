@@ -22,7 +22,7 @@ func TestCron_AddJob(t *testing.T) {
 
 	ctl := gomock.NewController(t)
 	locker := lockmock.NewMockLocker(ctl)
-	locker.EXPECT().Lock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
+	locker.EXPECT().Lock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(true, nil)
 	locker.EXPECT().Unlock(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
 
 	cron, err := NewCron("JobFunc", logger, WithLocker(locker))

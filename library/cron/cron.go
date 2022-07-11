@@ -134,8 +134,17 @@ func (c *Cron) handle(ctx context.Context, cmd cron.Job, funcName, spec, ip, loc
 		random := snowflake.Generate().String()
 
 		if !assert.IsNil(c.lock) {
-			if err = c.lock.Lock(ctx, lockKey, random, ttl); err != nil {
+			ok, err := c.lock.Lock(ctx, lockKey, random, ttl, 3)
+			if err != nil {
 				c.logger.Error(ctx, errors.Wrap(err, "crontab fun Lock err").Error(),
+					logger.Reflect("spec", spec),
+					logger.Reflect(logger.ClientIP, ip),
+					logger.Reflect(logger.API, c.name),
+					logger.Reflect(logger.Method, funcName))
+				return
+			}
+			if !ok {
+				c.logger.Error(ctx, "crontab fun Lock !ok",
 					logger.Reflect("spec", spec),
 					logger.Reflect(logger.ClientIP, ip),
 					logger.Reflect(logger.API, c.name),

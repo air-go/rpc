@@ -76,7 +76,7 @@ func TestInjectHTTP(t *testing.T) {
 			jaeger.Tracer = nil
 
 			err := InjectHTTP(ctx, req, logID)
-			assert.Equal(t, err, ErrTracerNil)
+			assert.Equal(t, err, nil)
 		})
 		convey.Convey("success", func() {
 			tracer := mocktracer.New()

@@ -1,3 +1,4 @@
+//go:generate go run -mod=mod github.com/golang/mock/mockgen -package mock -source ./lock.go -destination ./mock/lock.go Locker
 package cache
 
 import (

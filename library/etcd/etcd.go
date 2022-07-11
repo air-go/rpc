@@ -11,39 +11,47 @@ type Config struct {
 	DialTimeout time.Duration
 }
 
-// Etcd
-type Etcd struct {
-	*clientv3.Client
-	endpoints   []string
+type Option struct {
 	dialTimeout time.Duration
 }
 
-type Option func(*Etcd)
-
-func WithEndpoints(endpoints []string) Option {
-	return func(e *Etcd) { e.endpoints = endpoints }
+// Etcd
+type Etcd struct {
+	*clientv3.Client
+	opts      *Option
+	endpoints []string
 }
 
-func WithDialTimeout(duration time.Duration) Option {
-	return func(e *Etcd) { e.dialTimeout = duration * time.Second }
+type OptionFunc func(*Option)
+
+func WithDialTimeout(duration time.Duration) OptionFunc {
+	return func(o *Option) { o.dialTimeout = duration * time.Second }
+}
+
+func defaultOption() *Option {
+	return &Option{dialTimeout: time.Second * 10}
 }
 
 // NewClient
-func NewClient(opts ...Option) (*Etcd, error) {
+func NewClient(endpoints []string, opts ...OptionFunc) (*Etcd, error) {
 	var err error
-	e := &Etcd{}
 
+	opt := defaultOption()
 	for _, o := range opts {
-		o(e)
+		o(opt)
 	}
 
-	e.Client, err = clientv3.New(clientv3.Config{
-		Endpoints:   e.endpoints,
-		DialTimeout: e.dialTimeout,
+	cli := &Etcd{
+		opts:      opt,
+		endpoints: endpoints,
+	}
+	cli.Client, err = clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: opt.dialTimeout,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return e, nil
+	return cli, nil
 }

@@ -16,13 +16,28 @@ import (
 )
 
 type RedisCache struct {
-	c    *redis.Client
+	*Option
+	c    redis.Cmdable
 	lock lock.Locker
+}
+
+type Option struct {
+	try int
+}
+
+type OptionFunc func(*Option)
+
+func WithTry(try int) OptionFunc {
+	return func(o *Option) { o.try = try }
+}
+
+func defaultOption() *Option {
+	return &Option{try: 3}
 }
 
 var _ cache.Cacher = (*RedisCache)(nil)
 
-func New(c *redis.Client, locker lock.Locker) (*RedisCache, error) {
+func New(c redis.Cmdable, locker lock.Locker, opts ...OptionFunc) (*RedisCache, error) {
 	if assert.IsNil(c) {
 		return nil, errors.New("redis is nil")
 	}
@@ -31,9 +46,15 @@ func New(c *redis.Client, locker lock.Locker) (*RedisCache, error) {
 		return nil, errors.New("locker is nil")
 	}
 
+	opt := defaultOption()
+	for _, o := range opts {
+		o(opt)
+	}
+
 	return &RedisCache{
-		c:    c,
-		lock: locker,
+		Option: opt,
+		c:      c,
+		lock:   locker,
 	}, nil
 }
 
@@ -43,22 +64,23 @@ func (rc *RedisCache) GetData(ctx context.Context, key string, ttl time.Duration
 		return
 	}
 
-	// 无缓存
+	// cache no-exists
 	if cache.ExpireAt == 0 || cache.Data == "" {
 		err = rc.FlushCache(ctx, key, ttl, virtualTTL, f, data)
 		return
 	}
 
+	// cache expiration
 	err = json.Unmarshal([]byte(cache.Data), data)
 	if err != nil {
 		return
 	}
-
 	if time.Now().Before(time.Unix(cache.ExpireAt, 0)) {
 		return
 	}
 
-	ctxNew := utilCtx.RemoveCancel(ctx)
+	ctxNew, cancel := context.WithTimeout(utilCtx.RemoveCancel(ctx), time.Second*10)
+	_ = cancel
 	go rc.FlushCache(ctxNew, key, ttl, virtualTTL, f, data)
 
 	return
@@ -68,21 +90,8 @@ func (rc *RedisCache) FlushCache(ctx context.Context, key string, ttl time.Durat
 	lockKey := "LOCK::" + key
 	random := snowflake.Generate().String()
 
-	// 获取锁，自旋三次
-	// TODO 这里可优化为客户端传入控制
-	try := 0
-	for {
-		try = try + 1
-		if try > 3 {
-			break
-		}
-		err = rc.lock.Lock(ctx, lockKey, random, time.Second*10)
-		if err == lock.ErrLock {
-			continue
-		}
-		break
-	}
-	if err != nil {
+	ok, err := rc.lock.Lock(ctx, lockKey, random, time.Second*10, rc.try)
+	if err != nil || !ok {
 		return
 	}
 	defer rc.lock.Unlock(ctx, lockKey, random)
@@ -108,8 +117,8 @@ func (rc *RedisCache) getCache(ctx context.Context, key string) (data *cache.Cac
 	data = &cache.CacheData{}
 
 	res, err := rc.c.Get(ctx, key).Result()
-	if err == redis.Nil {
-		err = nil
+	if errors.Is(err, redis.Nil) {
+		return data, nil
 	}
 	if err != nil {
 		return

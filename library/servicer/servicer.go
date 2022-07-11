@@ -1,3 +1,4 @@
+//go:generate go run -mod=mod github.com/golang/mock/mockgen -package mock -source ./servicer.go -destination ./mock/servicer.go Servicer
 package servicer
 
 import (

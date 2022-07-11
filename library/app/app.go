@@ -43,7 +43,7 @@ func Debug() bool {
 }
 
 func ContextTimeout() time.Duration {
-	if app.ConnectTimeout == 0 {
+	if app.ContextTimeout == 0 {
 		return time.Duration(1000) * time.Millisecond
 	}
 	return time.Duration(app.ContextTimeout) * time.Millisecond

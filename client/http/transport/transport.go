@@ -185,7 +185,7 @@ func (r *RPC) getClient(ctx context.Context, serviceName string, service service
 			conn, err := (&net.Dialer{
 				Timeout:   30 * time.Second,
 				KeepAlive: 60 * time.Second,
-			}).DialContext(context.TODO(), "tcp", address)
+			}).DialContext(ctx, "tcp", address)
 			if err != nil {
 				return nil, err
 			}
@@ -203,7 +203,7 @@ func (r *RPC) getClient(ctx context.Context, serviceName string, service service
 			conn, err := (&net.Dialer{
 				Timeout:   30 * time.Second,
 				KeepAlive: 60 * time.Second,
-			}).DialContext(context.TODO(), "tcp", address)
+			}).DialContext(ctx, "tcp", address)
 			if err != nil {
 				return nil, err
 			}
