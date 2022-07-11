@@ -53,16 +53,12 @@ func NewJaegerTracer(connCfg *Config, serviceName string) (opentracing.Tracer, i
 	return tracer, closer, nil
 }
 
-func SetError(span opentracing.Span, err error) {
-	span.LogFields(opentracingLog.Error(err))
-}
-
 func SetRequest(span opentracing.Span, request string) {
 	span.LogFields(opentracingLog.String(LogFieldsRequest, request))
 }
 
-func SetResponse(span opentracing.Span, resp string) {
-	span.LogFields(opentracingLog.String(LogFieldsResponse, resp))
+func SetResponse(span opentracing.Span, response string) {
+	span.LogFields(opentracingLog.String(LogFieldsResponse, response))
 }
 
 func SetCommonTag(ctx context.Context, span opentracing.Span) {

@@ -31,16 +31,29 @@ func New(c *redis.Client) (*RedisLock, error) {
 }
 
 // Lock lock
-func (rl *RedisLock) Lock(ctx context.Context, key string, random interface{}, duration time.Duration) (err error) {
-	isSuccess, err := rl.c.SetNX(ctx, key, random, duration).Result()
-	if err != nil {
-		return
-	}
-	if !isSuccess {
-		return lock.ErrLock
-	}
+func (rl *RedisLock) Lock(ctx context.Context, key string, random interface{}, duration time.Duration, try int) (ok bool, err error) {
+	count := 0
+	for {
+		if count >= try {
+			return
+		}
 
-	return
+		count += 1
+
+		ok, err = rl.c.SetNX(ctx, key, random, duration).Result()
+		if err != nil {
+			return
+		}
+		if ok {
+			return
+		}
+
+		wait, err := rl.c.TTL(ctx, key).Result()
+		if err != nil {
+			continue
+		}
+		time.Sleep(wait)
+	}
 }
 
 // UnLock unlock
