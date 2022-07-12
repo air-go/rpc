@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/air-go/rpc/library/registry"
+	"github.com/air-go/rpc/library/servicer"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -82,13 +83,13 @@ func NewDiscovery(cli *clientv3.Client, name string, opts ...DiscoveryOptionFunc
 }
 
 // GetNodes
-func (s *EtcdDiscovery) GetNodes() []*registry.Node {
+func (s *EtcdDiscovery) GetNodes() []servicer.Node {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	nodes := make([]*registry.Node, 0)
+	nodes := make([]servicer.Node, 0)
 
 	for _, node := range s.nodeList {
-		nodes = append(nodes, node)
+		nodes = append(nodes, servicer.NewNode(node.Host, node.Port, servicer.WithWeight(node.Weight)))
 	}
 	return nodes
 }

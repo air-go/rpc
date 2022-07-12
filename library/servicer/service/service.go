@@ -4,81 +4,17 @@ import (
 	"context"
 	"errors"
 	"net"
-	"path/filepath"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/why444216978/go-util/assert"
-	utilDir "github.com/why444216978/go-util/dir"
 	"github.com/why444216978/go-util/validate"
 
-	"github.com/air-go/rpc/library/config"
-	"github.com/air-go/rpc/library/etcd"
 	"github.com/air-go/rpc/library/registry"
-	registryEtcd "github.com/air-go/rpc/library/registry/etcd"
 	"github.com/air-go/rpc/library/selector"
-	"github.com/air-go/rpc/library/selector/wr"
 	"github.com/air-go/rpc/library/servicer"
 )
-
-func LoadGlobPattern(path, suffix string, etcd *etcd.Etcd) (err error) {
-	var (
-		dir   string
-		files []string
-	)
-
-	if dir, err = config.Dir(); err != nil {
-		return
-	}
-
-	if files, err = filepath.Glob(filepath.Join(dir, path, "*."+suffix)); err != nil {
-		return
-	}
-
-	var discover registry.Discovery
-	info := utilDir.FileInfo{}
-	cfg := &Config{}
-	for _, f := range files {
-		if info, err = utilDir.GetPathInfo(f); err != nil {
-			return
-		}
-		if err = config.ReadConfig(filepath.Join("services", info.BaseNoExt), info.ExtNoSpot, cfg); err != nil {
-			return
-		}
-
-		if cfg.Type == servicer.TypeRegistry {
-			if assert.IsNil(etcd) {
-				return errors.New("LoadGlobPattern etcd nil")
-			}
-			if strings.TrimSpace(cfg.RegistryName) == "" {
-				return errors.New("service RegistryName is empty")
-			}
-
-			if discover, err = registryEtcd.NewDiscovery(etcd.Client, cfg.RegistryName); err != nil {
-				return
-			}
-		}
-
-		if err = LoadService(cfg, WithDiscovery(discover)); err != nil {
-			return
-		}
-	}
-
-	return
-}
-
-func LoadService(config *Config, opts ...Option) (err error) {
-	s, err := NewService(config, opts...)
-	if err != nil {
-		return
-	}
-
-	servicer.SetServicer(s)
-
-	return nil
-}
 
 type Config struct {
 	ServiceName  string `validate:"required"`
@@ -86,7 +22,7 @@ type Config struct {
 	Type         uint8  `validate:"required,oneof=1 2"`
 	Host         string `validate:"required"`
 	Port         int    `validate:"required"`
-	Selector     string `validate:"required,oneof=wr"` // TODO 后续支持其它
+	Selector     string `validate:"required,oneof=wr"` // TODO support others
 	CaCrt        string
 	ClientPem    string
 	ClientKey    string
@@ -94,21 +30,24 @@ type Config struct {
 
 type Service struct {
 	sync.RWMutex
-	selector        selector.Selector
-	selectorNewNode selector.NewNodeFunc
-	adjusting       int32
-	updateTime      time.Time
-	discovery       registry.Discovery
-	caCrt           []byte
-	clientPem       []byte
-	clientKey       []byte
-	config          *Config
+	selector   selector.Selector
+	adjusting  int32
+	updateTime time.Time
+	discovery  registry.Discovery
+	caCrt      []byte
+	clientPem  []byte
+	clientKey  []byte
+	config     *Config
 }
 
 type Option func(*Service)
 
 func WithDiscovery(discovery registry.Discovery) Option {
 	return func(s *Service) { s.discovery = discovery }
+}
+
+func WithSelector(selector selector.Selector) Option {
+	return func(s *Service) { s.selector = selector }
 }
 
 func NewService(config *Config, opts ...Option) (*Service, error) {
@@ -147,36 +86,25 @@ func (s *Service) RegistryName() string {
 	return s.config.RegistryName
 }
 
-func (s *Service) Pick(ctx context.Context) (node *servicer.Node, err error) {
-	node = &servicer.Node{
-		Port: s.config.Port,
-	}
-
-	if s.config.Type == servicer.TypeIPPort {
-		node.Host = s.config.Host
+func (s *Service) Pick(ctx context.Context) (node servicer.Node, err error) {
+	switch s.config.Type {
+	case servicer.TypeIPPort:
+		node = servicer.NewNode(s.config.Host, s.config.Port)
 		return
-	}
-
-	if s.config.Type == servicer.TypeDomain {
+	case servicer.TypeDomain:
 		var host *net.IPAddr
 		host, err = net.ResolveIPAddr("ip", s.config.Host)
 		if err != nil {
 			return
 		}
-		node.Host = host.IP.String()
+		node = servicer.NewNode(host.IP.String(), s.config.Port)
 		return
+	case servicer.TypeRegistry:
+		s.adjustSelectorNode()
+		return s.selector.Select()
 	}
 
-	s.adjustSelectorNode()
-
-	target, err := s.selector.Select()
-	if err != nil {
-		return
-	}
-
-	node.Host, node.Port = selector.ExtractAddress(target.Address())
-
-	return
+	return nil, errors.New("config type not support")
 }
 
 func (s *Service) initSelector() (err error) {
@@ -188,10 +116,8 @@ func (s *Service) initSelector() (err error) {
 		return errors.New("discovery is nil")
 	}
 
-	switch s.config.Selector {
-	case selector.TypeWR:
-		s.selector = wr.NewSelector(wr.WithServiceName(s.config.ServiceName))
-		s.selectorNewNode = wr.NewNode
+	if assert.IsNil(s.selector) {
+		return errors.New("selector is nil")
 	}
 
 	s.adjustSelectorNode()
@@ -213,20 +139,14 @@ func (s *Service) adjustSelectorNode() {
 
 	var (
 		address     string
-		host        string
-		port        int
 		nowNodes    = s.discovery.GetNodes()
 		nowMap      = make(map[string]struct{})
-		selectorMap = make(map[string]selector.Node)
+		selectorMap = make(map[string]servicer.Node)
 	)
 
 	// selector add new nodes
-	for _, n := range nowNodes {
-		host = n.Host
-		port = n.Port
-		address = selector.GenerateAddress(host, port)
-		node := s.selectorNewNode(host, port, n.Weight, selector.Meta{})
-
+	for _, node := range nowNodes {
+		address = node.Address()
 		nowMap[address] = struct{}{}
 		selectorMap[address] = node
 
@@ -239,19 +159,18 @@ func (s *Service) adjustSelectorNode() {
 		if _, ok := nowMap[n.Address()]; ok {
 			continue
 		}
-		host, port = selector.ExtractAddress(n.Address())
-		_ = s.selector.DeleteNode(host, port)
+		_ = s.selector.DeleteNode(n)
 	}
 
 	s.updateTime = time.Now()
 	atomic.StoreInt32(&s.adjusting, 0)
 }
 
-func (s *Service) Done(ctx context.Context, node *servicer.Node, err error) error {
+func (s *Service) Done(ctx context.Context, node servicer.Node, err error) error {
 	if assert.IsNil(s.selector) {
 		return errors.New("selector is nil")
 	}
-	s.selector.AfterHandle(selector.GenerateAddress(node.Host, node.Port), err)
+	s.selector.AfterHandle(selector.HandleInfo{Node: node, Err: err})
 	return nil
 }
 

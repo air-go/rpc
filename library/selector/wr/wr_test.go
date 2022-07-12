@@ -7,9 +7,11 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/air-go/rpc/library/selector"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/air-go/rpc/library/selector"
+	"github.com/air-go/rpc/library/servicer"
 )
 
 func TestNewNode(t *testing.T) {
@@ -18,11 +20,9 @@ func TestNewNode(t *testing.T) {
 			ip := "127.0.0.1"
 			port := 80
 			weight := 10
-			meta := selector.Meta{}
-			node := NewNode(ip, port, weight, meta)
-			assert.Equal(t, node.Address(), selector.GenerateAddress(ip, port))
+			node := servicer.NewNode(ip, port, servicer.WithWeight(weight))
+			assert.Equal(t, node.Address(), servicer.GenerateAddress(ip, port))
 			assert.Equal(t, node.Weight(), weight)
-			assert.Equal(t, node.Meta(), meta)
 		})
 	})
 }
@@ -39,10 +39,10 @@ func TestNode_Statistics(t *testing.T) {
 func TestNode_Weight(t *testing.T) {
 }
 
-func TestNode_incrSuccess(t *testing.T) {
+func TestNode_IncrSuccess(t *testing.T) {
 }
 
-func TestNode_incrFail(t *testing.T) {
+func TestNode_IncrFail(t *testing.T) {
 }
 
 func TestWithServiceName(t *testing.T) {
@@ -54,7 +54,7 @@ func TestNewSelector(t *testing.T) {
 func TestSelector_ServiceName(t *testing.T) {
 	convey.Convey("TestSelector_ServiceName", t, func() {
 		convey.Convey("success", func() {
-			s := NewSelector(WithServiceName("test_service"))
+			s := NewSelector("test_service")
 			serviceName := s.ServiceName()
 			assert.Equal(t, serviceName, "test_service")
 		})
@@ -88,16 +88,10 @@ func TestSelector_node2WRNode(t *testing.T) {
 func TestWR(t *testing.T) {
 	convey.Convey("TestWR", t, func() {
 		convey.Convey("testNoDeleteHandle same weight", func() {
-			nodes := []*Node{
-				{
-					address: "127.0.0.1:80",
-				},
-				{
-					address: "127.0.0.2:80",
-				},
-				{
-					address: "127.0.0.3:80",
-				},
+			nodes := []servicer.Node{
+				servicer.NewNode("127.0.0.1", 80),
+				servicer.NewNode("127.0.0.2", 80),
+				servicer.NewNode("127.0.0.3", 80),
 			}
 			res := testNoDeleteHandle(t, nodes)
 			fmt.Println("\ntestNoDeleteHandle same weight")
@@ -106,19 +100,10 @@ func TestWR(t *testing.T) {
 			}
 		})
 		convey.Convey("testNoDeleteHandle diff weight", func() {
-			nodes := []*Node{
-				{
-					address: "127.0.0.1:80",
-					weight:  2,
-				},
-				{
-					address: "127.0.0.2:80",
-					weight:  2,
-				},
-				{
-					address: "127.0.0.3:80",
-					weight:  1,
-				},
+			nodes := []servicer.Node{
+				servicer.NewNode("127.0.0.1", 80, servicer.WithWeight(2)),
+				servicer.NewNode("127.0.0.2", 80, servicer.WithWeight(2)),
+				servicer.NewNode("127.0.0.3", 80, servicer.WithWeight(1)),
 			}
 			res := testNoDeleteHandle(t, nodes)
 			fmt.Println("\ntestNoDeleteHandle diff weight")
@@ -127,16 +112,10 @@ func TestWR(t *testing.T) {
 			}
 		})
 		convey.Convey("testDeleteHandle same weight", func() {
-			nodes := []*Node{
-				{
-					address: "127.0.0.1:80",
-				},
-				{
-					address: "127.0.0.2:80",
-				},
-				{
-					address: "127.0.0.3:80",
-				},
+			nodes := []servicer.Node{
+				servicer.NewNode("127.0.0.1", 80),
+				servicer.NewNode("127.0.0.2", 80),
+				servicer.NewNode("127.0.0.3", 80),
 			}
 			res := testDeleteHandle(t, nodes)
 			fmt.Println("\ntestDeleteHandle same weight")
@@ -145,19 +124,10 @@ func TestWR(t *testing.T) {
 			}
 		})
 		convey.Convey("testDeleteHandle diff weight", func() {
-			nodes := []*Node{
-				{
-					address: "127.0.0.1:80",
-					weight:  2,
-				},
-				{
-					address: "127.0.0.2:80",
-					weight:  2,
-				},
-				{
-					address: "127.0.0.3:80",
-					weight:  1,
-				},
+			nodes := []servicer.Node{
+				servicer.NewNode("127.0.0.1", 80, servicer.WithWeight(2)),
+				servicer.NewNode("127.0.0.2", 80, servicer.WithWeight(2)),
+				servicer.NewNode("127.0.0.3", 80, servicer.WithWeight(1)),
 			}
 			res := testDeleteHandle(t, nodes)
 			fmt.Println("\ntestDeleteHandle diff weight")
@@ -168,8 +138,8 @@ func TestWR(t *testing.T) {
 	})
 }
 
-func testNoDeleteHandle(t *testing.T, nodes []*Node) []selector.Node {
-	s := NewSelector(WithServiceName("test_service"))
+func testNoDeleteHandle(t *testing.T, nodes []servicer.Node) []servicer.Node {
+	s := NewSelector("test_service")
 
 	for _, node := range nodes {
 		s.AddNode(node)
@@ -187,7 +157,7 @@ func testNoDeleteHandle(t *testing.T, nodes []*Node) []selector.Node {
 		if random != 0 {
 			err = nil
 		}
-		s.AfterHandle(node.Address(), err)
+		s.AfterHandle(selector.HandleInfo{Node: node, Err: err})
 		i++
 	}
 
@@ -195,8 +165,8 @@ func testNoDeleteHandle(t *testing.T, nodes []*Node) []selector.Node {
 	return res
 }
 
-func testDeleteHandle(t *testing.T, nodes []*Node) []selector.Node {
-	s := NewSelector(WithServiceName("test_service"))
+func testDeleteHandle(t *testing.T, nodes []servicer.Node) []servicer.Node {
+	s := NewSelector("test_service")
 
 	for _, node := range nodes {
 		s.AddNode(node)
@@ -215,13 +185,12 @@ func testDeleteHandle(t *testing.T, nodes []*Node) []selector.Node {
 			err = nil
 		}
 
-		s.AfterHandle(node.Address(), err)
+		s.AfterHandle(selector.HandleInfo{Node: node, Err: err})
 		i++
 	}
 
 	del := nodes[2]
-	host, port := selector.ExtractAddress(del.address)
-	_ = s.DeleteNode(host, port)
+	_ = s.DeleteNode(del)
 	i = 1
 	for {
 		if i > 1000 {
@@ -235,8 +204,8 @@ func testDeleteHandle(t *testing.T, nodes []*Node) []selector.Node {
 			err = nil
 		}
 
-		assert.Equal(t, node.Address() != del.address, true)
-		s.AfterHandle(node.Address(), err)
+		assert.Equal(t, node.Address() != del.Address(), true)
+		s.AfterHandle(selector.HandleInfo{Node: node, Err: err})
 		i++
 	}
 

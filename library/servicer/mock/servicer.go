@@ -36,7 +36,7 @@ func (m *MockServicer) EXPECT() *MockServicerMockRecorder {
 }
 
 // Done mocks base method.
-func (m *MockServicer) Done(ctx context.Context, node *servicer.Node, err error) error {
+func (m *MockServicer) Done(ctx context.Context, node servicer.Node, err error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Done", ctx, node, err)
 	ret0, _ := ret[0].(error)
@@ -106,10 +106,10 @@ func (mr *MockServicerMockRecorder) Name() *gomock.Call {
 }
 
 // Pick mocks base method.
-func (m *MockServicer) Pick(ctx context.Context) (*servicer.Node, error) {
+func (m *MockServicer) Pick(ctx context.Context) (servicer.Node, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Pick", ctx)
-	ret0, _ := ret[0].(*servicer.Node)
+	ret0, _ := ret[0].(servicer.Node)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

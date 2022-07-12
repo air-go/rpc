@@ -48,11 +48,45 @@ func New(opts ...Option) *RPC {
 }
 
 // Send is send HTTP request
+//
 func (r *RPC) Send(ctx context.Context, serviceName string, request client.Request, response *client.Response) (err error) {
 	var (
 		cost int64
-		node = &servicer.Node{}
+		node servicer.Node
+		cli  *http.Client
 	)
+
+	defer func() {
+		if r.logger == nil {
+			return
+		}
+
+		if assert.IsNil(node) {
+			node = servicer.Empty()
+		}
+
+		if response == nil {
+			response = &client.Response{}
+		}
+
+		fields := []logger.Field{
+			logger.Reflect(logger.ServiceName, serviceName),
+			logger.Reflect(logger.Header, request.Header),
+			logger.Reflect(logger.Method, request.Method),
+			logger.Reflect(logger.API, request.URI),
+			logger.Reflect(logger.Request, request.Body),
+			logger.Reflect(logger.Response, response.Body),
+			logger.Reflect(logger.ServerIP, node.Host()),
+			logger.Reflect(logger.ServerPort, node.Port()),
+			logger.Reflect(logger.Code, response.HTTPCode),
+			logger.Reflect(logger.Cost, cost),
+		}
+		if err == nil {
+			r.logger.Info(ctx, "rpc success", fields...)
+			return
+		}
+		r.logger.Error(ctx, err.Error(), fields...)
+	}()
 
 	if response == nil {
 		return errors.New("response is nil")
@@ -70,88 +104,64 @@ func (r *RPC) Send(ctx context.Context, serviceName string, request client.Reque
 		request.Header = http.Header{}
 	}
 
-	defer func() {
-		if r.logger == nil {
-			return
-		}
-		fields := []logger.Field{
-			logger.Reflect(logger.ServiceName, serviceName),
-			logger.Reflect(logger.Header, request.Header),
-			logger.Reflect(logger.Method, request.Method),
-			logger.Reflect(logger.API, request.URI),
-			logger.Reflect(logger.Request, request.Body),
-			logger.Reflect(logger.Response, response.Body),
-			logger.Reflect(logger.ServerIP, node.Host),
-			logger.Reflect(logger.ServerPort, node.Port),
-			logger.Reflect(logger.Code, response.HTTPCode),
-			logger.Reflect(logger.Cost, cost),
-		}
-		if err == nil {
-			r.logger.Info(ctx, "rpc success", fields...)
-			return
-		}
-		r.logger.Error(ctx, err.Error(), fields...)
-	}()
-
+	// encode request body
 	reqReader, err := request.Codec.Encode(request.Body)
 	if err != nil {
 		return
 	}
 
-	var (
-		client *http.Client
-		req    *http.Request
-	)
-
+	// get servicer
 	service, ok := servicer.GetServicer(serviceName)
 	if !ok {
 		err = errors.New("service is nil")
 		return
 	}
 
-	client, node, err = r.getClient(ctx, serviceName, service)
+	// construct client
+	cli, node, err = r.getClient(ctx, serviceName, service)
 	if err != nil {
 		return
 	}
 
-	// 构建req
-	url := fmt.Sprintf("http://%s:%d%s", node.Host, node.Port, request.URI)
-	req, err = http.NewRequestWithContext(ctx, request.Method, url, reqReader)
+	// construct request
+	url := fmt.Sprintf("http://%s:%d%s", node.Host(), node.Port(), request.URI)
+	req, err := http.NewRequestWithContext(ctx, request.Method, url, reqReader)
 	if err != nil {
 		return
 	}
 
-	// 超时传递
+	// timeout deliver
 	if err = timeoutLib.SetHeader(ctx, request.Header); err != nil {
 		return
 	}
 
-	// 设置请求header
+	// set header
 	req.Header = request.Header
 
-	// 请求结束前插件
+	// before plugins
 	for _, plugin := range r.beforePlugins {
 		_ = plugin.Handle(ctx, req)
 	}
 
-	// 请求开始时间
+	// start time
 	start := time.Now()
 
-	// 判断是否cancel
+	// check context cancel
 	if err = ctx.Err(); err != nil {
 		return
 	}
 
-	// 发送请求
-	resp, err := client.Do(req)
+	// send request
+	resp, err := cli.Do(req)
 
 	_ = service.Done(ctx, node, err)
 
-	// 请求结束后插件
+	// after plugins
 	for _, plugin := range r.afterPlugins {
 		_ = plugin.Handle(ctx, req, resp)
 	}
 
+	// cost duration
 	cost = time.Since(start).Milliseconds()
 	if err != nil {
 		return
@@ -164,18 +174,19 @@ func (r *RPC) Send(ctx context.Context, serviceName string, request client.Reque
 		return
 	}
 
+	// decode response body
 	err = response.Codec.Decode(resp.Body, response.Body)
 
 	return
 }
 
-func (r *RPC) getClient(ctx context.Context, serviceName string, service servicer.Servicer) (client *http.Client, node *servicer.Node, err error) {
+func (r *RPC) getClient(ctx context.Context, serviceName string, service servicer.Servicer) (client *http.Client, node servicer.Node, err error) {
 	node, err = service.Pick(ctx)
 	if err != nil {
 		return
 	}
 
-	address := fmt.Sprintf("%s:%d", node.Host, node.Port)
+	address := node.Address()
 
 	tp := &http.Transport{
 		MaxIdleConnsPerHost: 30,
