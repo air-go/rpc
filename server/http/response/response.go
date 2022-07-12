@@ -30,7 +30,7 @@ func ResponseJSON(c *gin.Context, code Code, data interface{}, err *ResponseErro
 
 	// prevent panic
 	if err == nil {
-		err = WrapToast(nil, "toast")
+		err = WrapToast(nil, "")
 	}
 
 	c.JSON(http.StatusOK, response{

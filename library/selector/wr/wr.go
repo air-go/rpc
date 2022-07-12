@@ -8,59 +8,8 @@ import (
 	"sync"
 
 	"github.com/air-go/rpc/library/selector"
+	"github.com/air-go/rpc/library/servicer"
 )
-
-type Node struct {
-	lock       sync.RWMutex
-	address    string
-	weight     int
-	meta       selector.Meta
-	statistics selector.Statistics
-}
-
-var (
-	_ selector.Node        = (*Node)(nil)
-	_ selector.NewNodeFunc = NewNode
-)
-
-func NewNode(host string, port, weight int, meta selector.Meta) selector.Node {
-	return &Node{
-		address:    selector.GenerateAddress(host, port),
-		weight:     weight,
-		meta:       meta,
-		statistics: selector.Statistics{},
-	}
-}
-
-func (n *Node) Address() string {
-	return n.address
-}
-
-func (n *Node) Meta() selector.Meta {
-	return n.meta
-}
-
-func (n *Node) Statistics() selector.Statistics {
-	n.lock.RLock()
-	defer n.lock.RUnlock()
-	return n.statistics
-}
-
-func (n *Node) Weight() int {
-	return n.weight
-}
-
-func (n *Node) incrSuccess() {
-	n.lock.Lock()
-	defer n.lock.Unlock()
-	n.statistics.Success = n.statistics.Success + 1
-}
-
-func (n *Node) incrFail() {
-	n.lock.Lock()
-	defer n.lock.Unlock()
-	n.statistics.Fail = n.statistics.Fail + 1
-}
 
 type nodeOffset struct {
 	Address     string
@@ -72,8 +21,8 @@ type nodeOffset struct {
 type Selector struct {
 	lock        sync.RWMutex
 	nodeCount   int
-	nodes       map[string]*Node
-	list        []*Node
+	nodes       map[string]servicer.Node
+	list        []servicer.Node
 	offsetList  []nodeOffset
 	sameWeight  bool
 	totalWeight int
@@ -84,15 +33,12 @@ var _ selector.Selector = (*Selector)(nil)
 
 type SelectorOption func(*Selector)
 
-func WithServiceName(name string) SelectorOption {
-	return func(s *Selector) { s.serviceName = name }
-}
-
-func NewSelector(opts ...SelectorOption) *Selector {
+func NewSelector(serviceName string, opts ...SelectorOption) *Selector {
 	s := &Selector{
-		nodes:      make(map[string]*Node),
-		list:       make([]*Node, 0),
-		offsetList: make([]nodeOffset, 0),
+		nodes:       make(map[string]servicer.Node),
+		list:        make([]servicer.Node, 0),
+		offsetList:  make([]nodeOffset, 0),
+		serviceName: serviceName,
 	}
 
 	for _, o := range opts {
@@ -106,7 +52,7 @@ func (s *Selector) ServiceName() string {
 	return s.serviceName
 }
 
-func (s *Selector) AddNode(node selector.Node) (err error) {
+func (s *Selector) AddNode(node servicer.Node) (err error) {
 	address := node.Address()
 	if _, ok := s.nodes[address]; ok {
 		return
@@ -131,11 +77,9 @@ func (s *Selector) AddNode(node selector.Node) (err error) {
 		OffsetEnd:   offsetEnd,
 	}
 
-	wrNode := s.node2WRNode(node)
-
 	s.totalWeight = offsetEnd
-	s.nodes[node.Address()] = wrNode
-	s.list = append(s.list, wrNode)
+	s.nodes[node.Address()] = node
+	s.list = append(s.list, node)
 	s.offsetList = append(s.offsetList, offset)
 	s.nodeCount = s.nodeCount + 1
 
@@ -145,8 +89,8 @@ func (s *Selector) AddNode(node selector.Node) (err error) {
 	return
 }
 
-func (s *Selector) DeleteNode(host string, port int) (err error) {
-	address := selector.GenerateAddress(host, port)
+func (s *Selector) DeleteNode(node servicer.Node) (err error) {
+	address := node.Address()
 	node, ok := s.nodes[address]
 	if !ok {
 		return
@@ -163,7 +107,7 @@ func (s *Selector) DeleteNode(host string, port int) (err error) {
 		if n.Address() != address {
 			continue
 		}
-		new := make([]*Node, len(s.list)-1)
+		new := make([]servicer.Node, len(s.list)-1)
 		new = append(s.list[:idx], s.list[idx+1:]...)
 		s.list = new
 	}
@@ -184,26 +128,14 @@ func (s *Selector) DeleteNode(host string, port int) (err error) {
 	return
 }
 
-func (s *Selector) GetNodes() (nodes []selector.Node, err error) {
+func (s *Selector) GetNodes() (nodes []servicer.Node, err error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	nodes = make([]selector.Node, 0)
-	for _, n := range s.list {
-		nodes = append(nodes, n)
-	}
-	return
+	return s.list, nil
 }
 
-func (s *Selector) GetNode(host string, port int) (node selector.Node, ok bool) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	node, ok = s.nodes[selector.GenerateAddress(host, port)]
-	return
-}
-
-func (s *Selector) Select() (node selector.Node, err error) {
+func (s *Selector) Select() (node servicer.Node, err error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -231,22 +163,20 @@ func (s *Selector) Select() (node selector.Node, err error) {
 	return
 }
 
-func (s *Selector) AfterHandle(address string, err error) {
+func (s *Selector) AfterHandle(info selector.HandleInfo) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	node := s.nodes[address]
+	node := s.nodes[info.Node.Address()]
 	if node == nil {
 		return
 	}
 
-	if err != nil {
-		node.incrFail()
+	if info.Err != nil {
+		node.IncrFail()
 		return
 	}
-	node.incrSuccess()
-
-	return
+	node.IncrSuccess()
 }
 
 func (s *Selector) checkSameWeight() {
@@ -254,7 +184,7 @@ func (s *Selector) checkSameWeight() {
 
 	var last int
 	for _, n := range s.list {
-		cur := int(n.weight)
+		cur := int(n.Weight())
 		if last == 0 {
 			last = cur
 			continue
@@ -272,13 +202,4 @@ func (s *Selector) sortOffset() {
 	sort.Slice(s.offsetList, func(i, j int) bool {
 		return s.offsetList[i].Weight > s.offsetList[j].Weight
 	})
-}
-
-func (s *Selector) node2WRNode(node selector.Node) *Node {
-	return &Node{
-		address:    node.Address(),
-		weight:     node.Weight(),
-		meta:       node.Meta(),
-		statistics: node.Statistics(),
-	}
 }

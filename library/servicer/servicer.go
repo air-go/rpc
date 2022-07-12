@@ -12,16 +12,6 @@ const (
 	TypeDomain   uint8 = 3
 )
 
-type Node struct {
-	Host string
-	Port int
-}
-
-type DoneInfo struct {
-	Node *Node
-	Err  error
-}
-
 var (
 	lock      sync.RWMutex
 	Servicers = make(map[string]Servicer)
@@ -47,8 +37,8 @@ func GetServicer(serviceName string) (Servicer, bool) {
 type Servicer interface {
 	Name() string
 	RegistryName() string
-	Pick(ctx context.Context) (*Node, error)
-	Done(ctx context.Context, node *Node, err error) error
+	Pick(ctx context.Context) (Node, error)
+	Done(ctx context.Context, node Node, err error) error
 	GetCaCrt() []byte
 	GetClientPem() []byte
 	GetClientKey() []byte

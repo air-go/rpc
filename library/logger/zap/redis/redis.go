@@ -32,7 +32,7 @@ type RedisConfig struct {
 
 // RedisLogger is go-redis logger Hook
 type RedisLogger struct {
-	log    *zapLogger.ZapLogger
+	*zapLogger.ZapLogger
 	config *RedisConfig
 }
 
@@ -62,7 +62,7 @@ func NewRedisLogger(config *RedisConfig, opts ...RedisOption) (rl *RedisLogger, 
 	if err != nil {
 		return
 	}
-	rl.log = l
+	rl.ZapLogger = l
 
 	return
 }
@@ -174,7 +174,7 @@ func (rl *RedisLogger) fields(ctx context.Context, isPipeline bool, cmds []redis
 }
 
 func (rl *RedisLogger) logger() *zapLogger.ZapLogger {
-	return rl.log
+	return rl.ZapLogger
 }
 
 func (rl *RedisLogger) setCmdStart(ctx context.Context) context.Context {

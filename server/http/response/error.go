@@ -40,7 +40,7 @@ func WrapToast(err error, toast string) *ResponseError {
 	}
 
 	return &ResponseError{
-		err:   errors.Wrap(err, toast),
+		err:   err,
 		toast: toast,
 	}
 }

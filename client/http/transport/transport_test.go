@@ -72,10 +72,7 @@ func TestRPC_Send(t *testing.T) {
 		})
 		convey.Convey("success", func() {
 			ctx := context.Background()
-			node := &servicer.Node{
-				Host: "127.0.0.1",
-				Port: 80,
-			}
+			node := servicer.NewNode("127.0.0.1", 80)
 
 			// servicer mock
 			ctl := gomock.NewController(t)

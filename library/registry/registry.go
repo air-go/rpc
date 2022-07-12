@@ -3,6 +3,8 @@ package registry
 import (
 	"context"
 	"time"
+
+	"github.com/air-go/rpc/library/servicer"
 )
 
 type Node struct {
@@ -19,7 +21,7 @@ type Registrar interface {
 
 // Discovery is service discovery
 type Discovery interface {
-	GetNodes() []*Node
+	GetNodes() []servicer.Node
 	GetUpdateTime() time.Time
 	Close() error
 }
