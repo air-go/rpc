@@ -6,7 +6,9 @@
 # rpc
 
 [![workflows](https://github.com/air-go/rpc/workflows/Go/badge.svg)](https://github.com/air-go/rpc/actions?query=workflow%3AGo+branch%3Amaster)
+[![Release](https://img.shields.io/github/v/release/air-go/rpc.svg?style=flat-square)](https://github.com/air-go/rpc/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/air-go/rpc)](https://goreportcard.com/report/github.com/air-go/rpc)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 Go 微服务框架，同时支持 gRPC 和 HTTP，封装各种常用组件，开箱即用，专注业务。
 <br><br>
