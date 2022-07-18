@@ -35,6 +35,21 @@ func (m *MockServicer) EXPECT() *MockServicerMockRecorder {
 	return m.recorder
 }
 
+// All mocks base method.
+func (m *MockServicer) All(ctx context.Context) ([]servicer.Node, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "All", ctx)
+	ret0, _ := ret[0].([]servicer.Node)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// All indicates an expected call of All.
+func (mr *MockServicerMockRecorder) All(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "All", reflect.TypeOf((*MockServicer)(nil).All), ctx)
+}
+
 // Done mocks base method.
 func (m *MockServicer) Done(ctx context.Context, node servicer.Node, err error) error {
 	m.ctrl.T.Helper()

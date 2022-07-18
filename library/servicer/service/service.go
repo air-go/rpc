@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/why444216978/go-util/assert"
@@ -31,7 +30,6 @@ type Config struct {
 type Service struct {
 	sync.RWMutex
 	selector   selector.Selector
-	adjusting  int32
 	updateTime time.Time
 	discovery  registry.Discovery
 	caCrt      []byte
@@ -50,9 +48,10 @@ func WithSelector(selector selector.Selector) Option {
 	return func(s *Service) { s.selector = selector }
 }
 
+var _ servicer.Servicer = (*Service)(nil)
+
 func NewService(config *Config, opts ...Option) (*Service, error) {
 	s := &Service{
-		adjusting: 0,
 		config:    config,
 		caCrt:     []byte(config.CaCrt),
 		clientPem: []byte(config.ClientPem),
@@ -107,6 +106,25 @@ func (s *Service) Pick(ctx context.Context) (node servicer.Node, err error) {
 	return nil, errors.New("config type not support")
 }
 
+func (s *Service) All(ctx context.Context) (node []servicer.Node, err error) {
+	switch s.config.Type {
+	case servicer.TypeIPPort:
+		return []servicer.Node{servicer.NewNode(s.config.Host, s.config.Port)}, nil
+	case servicer.TypeDomain:
+		var host *net.IPAddr
+		host, err = net.ResolveIPAddr("ip", s.config.Host)
+		if err != nil {
+			return
+		}
+		return []servicer.Node{servicer.NewNode(host.IP.String(), s.config.Port)}, nil
+	case servicer.TypeRegistry:
+		s.adjustSelectorNode()
+		return s.selector.GetNodes()
+	}
+
+	return nil, errors.New("config type not support")
+}
+
 func (s *Service) initSelector() (err error) {
 	if s.config.Type != servicer.TypeRegistry {
 		return nil
@@ -126,11 +144,11 @@ func (s *Service) initSelector() (err error) {
 }
 
 func (s *Service) adjustSelectorNode() {
-	if s.discovery.GetUpdateTime().Before(s.updateTime) {
+	if s.config.Type != servicer.TypeRegistry {
 		return
 	}
 
-	if !atomic.CompareAndSwapInt32(&s.adjusting, 0, 1) {
+	if s.discovery.GetUpdateTime().Before(s.updateTime) {
 		return
 	}
 
@@ -163,7 +181,6 @@ func (s *Service) adjustSelectorNode() {
 	}
 
 	s.updateTime = time.Now()
-	atomic.StoreInt32(&s.adjusting, 0)
 }
 
 func (s *Service) Done(ctx context.Context, node servicer.Node, err error) error {
