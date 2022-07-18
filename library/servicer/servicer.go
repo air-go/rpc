@@ -38,6 +38,7 @@ type Servicer interface {
 	Name() string
 	RegistryName() string
 	Pick(ctx context.Context) (Node, error)
+	All(ctx context.Context) ([]Node, error)
 	Done(ctx context.Context, node Node, err error) error
 	GetCaCrt() []byte
 	GetClientPem() []byte

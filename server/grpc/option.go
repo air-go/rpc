@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
 
 	"github.com/air-go/rpc/library/jaeger"
@@ -41,14 +42,23 @@ var kacp = keepalive.ClientParameters{
 	PermitWithoutStream: true,             // send pings even without active streams
 }
 
-type DialOption struct{}
+type DialOption struct {
+	resolver resolver.Builder
+}
 
 type DialOptionFunc func(*DialOption)
 
+func DialOptionResolver(r resolver.Builder) DialOptionFunc {
+	return func(o *DialOption) { o.resolver = r }
+}
+
 func NewDialOption(opts ...DialOptionFunc) []grpc.DialOption {
-	return []grpc.DialOption{
-		// TODO
-		// grpc.WithResolvers(resolver),
+	opt := &DialOption{}
+	for _, o := range opts {
+		o(opt)
+	}
+
+	dialOptions := []grpc.DialOption{
 		grpc.WithTimeout(10 * time.Second),
 		grpc.WithInsecure(),
 		grpc.WithKeepaliveParams(kacp),
@@ -71,6 +81,12 @@ func NewDialOption(opts ...DialOptionFunc) []grpc.DialOption {
 			),
 		),
 	}
+
+	if !assert.IsNil(opt.resolver) {
+		dialOptions = append(dialOptions, grpc.WithResolvers(opt.resolver))
+	}
+
+	return dialOptions
 }
 
 type ServerOption struct {
