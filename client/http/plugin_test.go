@@ -12,10 +12,10 @@ import (
 )
 
 func TestJaegerBeforePlugin_Handle(t *testing.T) {
-	p := &JaegerBeforePlugin{}
+	p := &OpentracingBeforePlugin{}
 	convey.Convey("TestJaegerBeforePlugin_Handle", t, func() {
 		convey.Convey("success", func() {
-			err := p.Handle(context.Background(), httptest.NewRequest(http.MethodGet, "/", strings.NewReader(``)))
+			_, err := p.Handle(context.Background(), httptest.NewRequest(http.MethodGet, "/", strings.NewReader(``)))
 			assert.Nil(t, err)
 		})
 	})

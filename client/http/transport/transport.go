@@ -140,7 +140,7 @@ func (r *RPC) Send(ctx context.Context, serviceName string, request client.Reque
 
 	// before plugins
 	for _, plugin := range r.beforePlugins {
-		_ = plugin.Handle(ctx, req)
+		ctx, _ = plugin.Handle(ctx, req)
 	}
 
 	// start time
@@ -158,7 +158,7 @@ func (r *RPC) Send(ctx context.Context, serviceName string, request client.Reque
 
 	// after plugins
 	for _, plugin := range r.afterPlugins {
-		_ = plugin.Handle(ctx, req, resp)
+		ctx, _ = plugin.Handle(ctx, req, resp)
 	}
 
 	// cost duration

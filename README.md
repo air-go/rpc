@@ -88,11 +88,12 @@ QQ群：909211071
     - cron //任务调度
     - etcd //etcd
     - grpc //grpc封装
-    - jaeger //jaeger分布式链路追踪
+    - opentracing //opentracing分布式链路追踪
     - job //离线任务
     - lock //分布式锁
     - logger //日志
     - orm //db orm
+    - otel //otel分布式链路追踪
     - queue //消息队列
     - redis //redis
     - registry //注册中心

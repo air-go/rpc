@@ -6,8 +6,8 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/air-go/rpc/library/jaeger/gorm"
 	logger "github.com/air-go/rpc/library/logger/zap/gorm"
+	"github.com/air-go/rpc/library/opentracing/gorm"
 )
 
 func TestNewOrm(t *testing.T) {
