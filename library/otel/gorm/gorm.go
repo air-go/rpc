@@ -1,68 +1,58 @@
 package gorm
 
 import (
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
-	opentracing_log "github.com/opentracing/opentracing-go/log"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
+	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 
-	"github.com/air-go/rpc/library/jaeger"
-	"github.com/why444216978/go-util/assert"
+	libraryOtel "github.com/air-go/rpc/library/otel"
 )
 
-// gorm hook
 const (
-	componentGorm      = "Gorm"
-	gormSpanKey        = "gorm_span"
-	callBackBeforeName = "opentracing:before"
-	callBackAfterName  = "opentracing:after"
+	callBackBeforeName = "opentelemetry:before"
+	callBackAfterName  = "opentelemetry:after"
 )
 
 // before gorm before execute action do something
 func before(db *gorm.DB) {
-	if assert.IsNil(jaeger.Tracer) {
+	if !libraryOtel.CheckHasTraceID(db.Statement.Context) {
 		return
 	}
-	span, _ := opentracing.StartSpanFromContextWithTracer(db.Statement.Context, jaeger.Tracer, componentGorm)
-	db.InstanceSet(gormSpanKey, span)
-	return
+	db.Statement.Context, _ = libraryOtel.Tracer().Start(db.Statement.Context, semconv.DBSystemMySQL.Value.AsString(), trace.WithSpanKind(trace.SpanKindClient))
 }
 
 // after gorm after execute action do something
 func after(db *gorm.DB) {
-	if assert.IsNil(jaeger.Tracer) {
+	if !libraryOtel.CheckHasTraceID(db.Statement.Context) {
 		return
 	}
-	_span, isExist := db.InstanceGet(gormSpanKey)
-	if !isExist {
-		return
-	}
-	span, ok := _span.(opentracing.Span)
-	if !ok {
-		return
-	}
-	defer span.Finish()
 
-	jaeger.SetCommonTag(db.Statement.Context, span)
+	span := trace.SpanFromContext(db.Statement.Context)
+	defer span.End()
 
 	if db.Error != nil {
-		span.LogFields(opentracing_log.Error(db.Error))
-		span.SetTag(string(ext.Error), true)
+		span.SetStatus(codes.Error, db.Error.Error())
+		span.SetAttributes(libraryOtel.AttributeRedisError.String(db.Error.Error()))
 	}
-	span.LogFields(opentracing_log.String("SQL", db.Dialector.Explain(db.Statement.SQL.String(), db.Statement.Vars...)))
 
-	return
+	span.AddEvent("SQL", trace.WithAttributes([]attribute.KeyValue{
+		semconv.DBStatementKey.String(db.Dialector.Explain(db.Statement.SQL.String(), db.Statement.Vars...)),
+	}...))
 }
 
-type opentracingPlugin struct{}
+type opentelemetryPlugin struct{}
 
-var GormTrace gorm.Plugin = &opentracingPlugin{}
-
-func (op *opentracingPlugin) Name() string {
-	return "opentracingPlugin"
+func NewOpentelemetryPlugin() gorm.Plugin {
+	return &opentelemetryPlugin{}
 }
 
-func (op *opentracingPlugin) Initialize(db *gorm.DB) (err error) {
+func (op *opentelemetryPlugin) Name() string {
+	return "opentelemetryPlugin"
+}
+
+func (op *opentelemetryPlugin) Initialize(db *gorm.DB) (err error) {
 	// create
 	if err = db.Callback().Create().Before("gorm:before_create").Register(callBackBeforeName, before); err != nil {
 		return err

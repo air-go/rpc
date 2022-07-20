@@ -3,17 +3,15 @@ package log
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"net/http/httputil"
 	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/why444216978/go-util/assert"
-	"github.com/why444216978/go-util/conversion"
 	"github.com/why444216978/go-util/sys"
 
 	"github.com/air-go/rpc/library/app"
-	jaegerHTTP "github.com/air-go/rpc/library/jaeger/http"
 	"github.com/air-go/rpc/library/logger"
 	"github.com/air-go/rpc/server/http/util"
 )
@@ -21,10 +19,6 @@ import (
 func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-
-		defer func() {
-			c.Request = c.Request.WithContext(ctx)
-		}()
 
 		start := time.Now()
 
@@ -39,15 +33,9 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 		responseWriter := &util.BodyWriter{Body: bytes.NewBuffer(nil), ResponseWriter: c.Writer}
 		c.Writer = responseWriter
 
-		ctx, span, traceID := jaegerHTTP.ExtractHTTP(ctx, c.Request, logger.ValueLogID(ctx))
-		if !assert.IsNil(span) {
-			defer span.Finish()
-		}
-		ctx = logger.WithTraceID(ctx, traceID)
-
 		fields := []logger.Field{
 			logger.Reflect(logger.LogID, logID),
-			logger.Reflect(logger.TraceID, traceID),
+			logger.Reflect(logger.TraceID, logger.ValueTraceID(ctx)),
 			logger.Reflect(logger.Header, c.Request.Header),
 			logger.Reflect(logger.Method, c.Request.Method),
 			logger.Reflect(logger.Request, base64.StdEncoding.EncodeToString(req)),
@@ -68,20 +56,22 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 			done <- struct{}{}
 			atomic.StoreInt32(&doneFlag, 1)
 
+			ctx := c.Request.Context()
+
 			resp := responseWriter.Body.Bytes()
-			respString := string(resp)
 			if responseWriter.Body.Len() > 0 {
-				logResponse, _ := conversion.JsonToMap(respString)
+				logResponse := map[string]interface{}{}
+				_ = json.Unmarshal(resp, &logResponse)
 				ctx = logger.AddField(ctx, logger.Reflect(logger.Response, logResponse))
 			}
-
-			reqString, _ := conversion.JsonEncode(req)
-			jaegerHTTP.SetHTTPLog(span, reqString, respString)
 
 			ctx = logger.AddField(ctx,
 				logger.Reflect(logger.Code, c.Writer.Status()),
 				logger.Reflect(logger.Cost, time.Since(start).Milliseconds()),
 			)
+
+			c.Request = c.Request.WithContext(ctx)
+
 			l.Info(ctx, "request info")
 		}()
 

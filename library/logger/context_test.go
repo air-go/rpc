@@ -111,5 +111,17 @@ func TestAddField(t *testing.T) {
 			res := ValueFields(ctx)
 			assert.Equal(t, res, want)
 		})
+		convey.Convey("repeat", func() {
+			ctx := context.TODO()
+			ctx = context.WithValue(ctx, contextHTTPLogFields, []Field{Reflect("a", "a"), Reflect("b", "b")})
+			ctx = AddField(ctx, []Field{Reflect("b", "b")}...)
+			want := []Field{
+				Reflect("a", "a"),
+				Reflect("b", "b"),
+			}
+
+			res := ValueFields(ctx)
+			assert.Equal(t, res, want)
+		})
 	})
 }

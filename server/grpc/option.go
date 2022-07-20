@@ -18,8 +18,8 @@ import (
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
 
-	"github.com/air-go/rpc/library/jaeger"
 	"github.com/air-go/rpc/library/logger"
+	libraryOpentracing "github.com/air-go/rpc/library/opentracing"
 	"github.com/air-go/rpc/server/grpc/middleware/log"
 )
 
@@ -72,7 +72,7 @@ func NewDialOption(opts ...DialOptionFunc) []grpc.DialOption {
 					}
 
 					bs, _ := json.Marshal(req)
-					jaeger.SetRequest(span, string(bs))
+					libraryOpentracing.SetRequest(span, string(bs))
 
 					if err != nil {
 						span.LogFields(opentracingLog.Error(err))
@@ -114,7 +114,7 @@ func NewServerOption(opts ...ServerOptionFunc) []grpc.ServerOption {
 				}
 
 				bs, _ := json.Marshal(resp)
-				jaeger.SetResponse(span, string(bs))
+				libraryOpentracing.SetResponse(span, string(bs))
 
 				if err != nil {
 					span.LogFields(opentracingLog.Error(err))
