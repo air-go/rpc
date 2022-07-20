@@ -11,7 +11,7 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/air-go/rpc/library/jaeger"
+	libraryOpentracing "github.com/air-go/rpc/library/opentracing"
 )
 
 func TestExtractHTTP(t *testing.T) {
@@ -24,7 +24,7 @@ func TestExtractHTTP(t *testing.T) {
 
 	convey.Convey("TestExtractHTTP", t, func() {
 		convey.Convey("Tracer nil", func() {
-			jaeger.Tracer = nil
+			libraryOpentracing.Tracer = nil
 
 			_, span, spanID := ExtractHTTP(ctx, req, logID)
 			assert.Equal(t, span, nil)
@@ -32,7 +32,7 @@ func TestExtractHTTP(t *testing.T) {
 		})
 		convey.Convey("success no parentSpanContext", func() {
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 
 			ctx, span, _ := ExtractHTTP(ctx, req, logID)
 			span.Finish()
@@ -45,7 +45,7 @@ func TestExtractHTTP(t *testing.T) {
 		})
 		convey.Convey("success has parentSpanContext", func() {
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 
 			span := tracer.StartSpan(httpServerComponentPrefix + req.URL.Path)
 			span.Finish()
@@ -73,14 +73,14 @@ func TestInjectHTTP(t *testing.T) {
 
 	convey.Convey("TestInjectHTTP", t, func() {
 		convey.Convey("Tracer nil", func() {
-			jaeger.Tracer = nil
+			libraryOpentracing.Tracer = nil
 
 			err := InjectHTTP(ctx, req, logID)
 			assert.Equal(t, err, nil)
 		})
 		convey.Convey("success", func() {
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 
 			span := tracer.StartSpan(httpServerComponentPrefix + req.URL.Path)
 			span.Finish()

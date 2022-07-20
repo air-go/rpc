@@ -59,9 +59,20 @@ func ValueFields(ctx context.Context) []Field {
 }
 
 func AddField(ctx context.Context, fields ...Field) context.Context {
-	old := ValueFields(ctx)
-	new := make([]Field, 0, len(old)+len(fields))
-	new = append(new, old...)
-	new = append(new, fields...)
-	return WithFields(ctx, new)
+	arr := ValueFields(ctx)
+
+	oldIndex := map[string]int{}
+	for i, f := range arr {
+		oldIndex[f.Key()] = i
+	}
+
+	for _, f := range fields {
+		if i, ok := oldIndex[f.Key()]; ok {
+			arr[i] = f
+			continue
+		}
+		arr = append(arr, f)
+	}
+
+	return WithFields(ctx, arr)
 }
