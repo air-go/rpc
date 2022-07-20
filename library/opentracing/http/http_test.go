@@ -20,13 +20,12 @@ func TestExtractHTTP(t *testing.T) {
 		Header: http.Header{},
 		URL:    &url.URL{},
 	}
-	logID := "logID"
 
 	convey.Convey("TestExtractHTTP", t, func() {
 		convey.Convey("Tracer nil", func() {
 			libraryOpentracing.Tracer = nil
 
-			_, span, spanID := ExtractHTTP(ctx, req, logID)
+			_, span, spanID := ExtractHTTP(ctx, req)
 			assert.Equal(t, span, nil)
 			assert.Equal(t, spanID, "")
 		})
@@ -34,7 +33,7 @@ func TestExtractHTTP(t *testing.T) {
 			tracer := mocktracer.New()
 			libraryOpentracing.Tracer = tracer
 
-			ctx, span, _ := ExtractHTTP(ctx, req, logID)
+			ctx, span, _ := ExtractHTTP(ctx, req)
 			span.Finish()
 
 			_, ok := span.Context().(mocktracer.MockSpanContext)
@@ -51,7 +50,7 @@ func TestExtractHTTP(t *testing.T) {
 			span.Finish()
 			_ = tracer.Inject(span.Context(), opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(req.Header))
 
-			ctx, span, _ = ExtractHTTP(ctx, req, logID)
+			ctx, span, _ = ExtractHTTP(ctx, req)
 			span.Finish()
 
 			_, ok := span.Context().(mocktracer.MockSpanContext)
@@ -99,7 +98,7 @@ func TestSetHTTPLog(t *testing.T) {
 			tracer := mocktracer.New()
 			span := tracer.StartSpan(httpServerComponentPrefix + "uri")
 			span.Finish()
-			SetHTTPLog(span, "req", "resp")
+			SetHTTPLog(span, "logID", "req", "resp")
 		})
 	})
 }
