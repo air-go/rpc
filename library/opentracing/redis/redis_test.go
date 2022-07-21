@@ -10,7 +10,7 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/air-go/rpc/library/jaeger"
+	libraryOpentracing "github.com/air-go/rpc/library/opentracing"
 )
 
 func TestNewJaegerHook(t *testing.T) {
@@ -25,7 +25,7 @@ func Test_jaegerHook_BeforeProcess(t *testing.T) {
 	convey.Convey("Test_jaegerHook_BeforeProcess", t, func() {
 		convey.Convey("Tracer nil", func() {
 			ctx := context.Background()
-			jaeger.Tracer = nil
+			libraryOpentracing.Tracer = nil
 			jh := NewJaegerHook()
 			cmd := redis.NewStringCmd(ctx, "get")
 			ctx, err := jh.BeforeProcess(ctx, cmd)
@@ -34,7 +34,7 @@ func Test_jaegerHook_BeforeProcess(t *testing.T) {
 		convey.Convey("success", func() {
 			ctx := context.Background()
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 			jh := NewJaegerHook()
 			cmd := redis.NewStringCmd(ctx, "get")
 			ctx, err := jh.BeforeProcess(ctx, cmd)
@@ -48,7 +48,7 @@ func Test_jaegerHook_AfterProcess(t *testing.T) {
 	convey.Convey("Test_jaegerHook_AfterProcess", t, func() {
 		convey.Convey("Tracer nil", func() {
 			ctx := context.Background()
-			jaeger.Tracer = nil
+			libraryOpentracing.Tracer = nil
 			jh := NewJaegerHook()
 			cmd := redis.NewStringCmd(ctx, "get")
 			err := jh.AfterProcess(ctx, cmd)
@@ -57,7 +57,7 @@ func Test_jaegerHook_AfterProcess(t *testing.T) {
 		convey.Convey("extract span from ctx nil", func() {
 			ctx := context.Background()
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 			jh := NewJaegerHook()
 			cmd := redis.NewStringCmd(ctx, "get")
 			err := jh.AfterProcess(ctx, cmd)
@@ -67,7 +67,7 @@ func Test_jaegerHook_AfterProcess(t *testing.T) {
 		convey.Convey("success", func() {
 			ctx := context.Background()
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 			jh := NewJaegerHook()
 			cmd := redis.NewStringCmd(ctx, "get")
 			ctx, err := jh.BeforeProcess(ctx, cmd)
@@ -83,7 +83,7 @@ func Test_jaegerHook_AfterProcess(t *testing.T) {
 
 			ctx := context.Background()
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 			jh := NewJaegerHook()
 			cmd := redis.NewBoolResult(false, redis.ErrClosed)
 			ctx, err := jh.BeforeProcess(ctx, cmd)
@@ -98,7 +98,7 @@ func Test_jaegerHook_BeforeProcessPipeline(t *testing.T) {
 	convey.Convey("Test_jaegerHook_BeforeProcessPipeline", t, func() {
 		convey.Convey("Tracer nil", func() {
 			ctx := context.Background()
-			jaeger.Tracer = nil
+			libraryOpentracing.Tracer = nil
 			jh := NewJaegerHook()
 			cmd := redis.NewStringCmd(ctx, "get")
 			ctx, err := jh.BeforeProcessPipeline(ctx, []redis.Cmder{cmd})
@@ -107,7 +107,7 @@ func Test_jaegerHook_BeforeProcessPipeline(t *testing.T) {
 		convey.Convey("success", func() {
 			ctx := context.Background()
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 			jh := NewJaegerHook()
 			cmd := redis.NewStringCmd(ctx, "get")
 			ctx, err := jh.BeforeProcessPipeline(ctx, []redis.Cmder{cmd})
@@ -121,7 +121,7 @@ func Test_jaegerHook_AfterProcessPipeline(t *testing.T) {
 	convey.Convey("Test_jaegerHook_AfterProcessPipeline", t, func() {
 		convey.Convey("Tracer nil", func() {
 			ctx := context.Background()
-			jaeger.Tracer = nil
+			libraryOpentracing.Tracer = nil
 			jh := NewJaegerHook()
 			cmd := redis.NewStringCmd(ctx, "get")
 			err := jh.AfterProcessPipeline(ctx, []redis.Cmder{cmd})
@@ -130,7 +130,7 @@ func Test_jaegerHook_AfterProcessPipeline(t *testing.T) {
 		convey.Convey("extract span from ctx nil", func() {
 			ctx := context.Background()
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 			jh := NewJaegerHook()
 			cmd := redis.NewStringCmd(ctx, "get")
 			err := jh.AfterProcessPipeline(ctx, []redis.Cmder{cmd})
@@ -140,7 +140,7 @@ func Test_jaegerHook_AfterProcessPipeline(t *testing.T) {
 		convey.Convey("success", func() {
 			ctx := context.Background()
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 			jh := NewJaegerHook()
 			cmd := redis.NewStringCmd(ctx, "get")
 			ctx, err := jh.BeforeProcessPipeline(ctx, []redis.Cmder{cmd})
@@ -156,7 +156,7 @@ func Test_jaegerHook_AfterProcessPipeline(t *testing.T) {
 
 			ctx := context.Background()
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 			jh := NewJaegerHook()
 			cmd := redis.NewBoolResult(false, redis.ErrClosed)
 			ctx, err := jh.BeforeProcessPipeline(ctx, []redis.Cmder{cmd})

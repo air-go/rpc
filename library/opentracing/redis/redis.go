@@ -4,13 +4,13 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/air-go/rpc/library/jaeger"
-	"github.com/why444216978/go-util/assert"
-
 	"github.com/go-redis/redis/v8"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	tracerLog "github.com/opentracing/opentracing-go/log"
+
+	libraryOpentracing "github.com/air-go/rpc/library/opentracing"
+	"github.com/why444216978/go-util/assert"
 )
 
 const (
@@ -36,12 +36,12 @@ func NewJaegerHook() redis.Hook {
 
 // BeforeProcess redis before execute action do something
 func (jh *jaegerHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (context.Context, error) {
-	if assert.IsNil(jaeger.Tracer) {
+	if assert.IsNil(libraryOpentracing.Tracer) {
 		return ctx, nil
 	}
-	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, jaeger.Tracer, operationRedis+cmd.Name())
+	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, libraryOpentracing.Tracer, operationRedis+cmd.Name())
 
-	jaeger.SetCommonTag(ctx, span)
+	libraryOpentracing.SetCommonTag(ctx, span)
 
 	ctx = opentracing.ContextWithSpan(ctx, span)
 	return ctx, nil
@@ -49,7 +49,7 @@ func (jh *jaegerHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (conte
 
 // AfterProcess redis after execute action do something
 func (jh *jaegerHook) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
-	if assert.IsNil(jaeger.Tracer) {
+	if assert.IsNil(libraryOpentracing.Tracer) {
 		return nil
 	}
 	span := opentracing.SpanFromContext(ctx)
@@ -72,11 +72,11 @@ func (jh *jaegerHook) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
 
 // BeforeProcessPipeline before command process handle
 func (jh *jaegerHook) BeforeProcessPipeline(ctx context.Context, cmds []redis.Cmder) (context.Context, error) {
-	if assert.IsNil(jaeger.Tracer) {
+	if assert.IsNil(libraryOpentracing.Tracer) {
 		return ctx, nil
 	}
 
-	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, jaeger.Tracer, operationRedis+"pipeline")
+	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, libraryOpentracing.Tracer, operationRedis+"pipeline")
 
 	ctx = context.WithValue(ctx, cmdStart, span)
 
@@ -85,7 +85,7 @@ func (jh *jaegerHook) BeforeProcessPipeline(ctx context.Context, cmds []redis.Cm
 
 // AfterProcessPipeline after command process handle
 func (jh *jaegerHook) AfterProcessPipeline(ctx context.Context, cmds []redis.Cmder) error {
-	if assert.IsNil(jaeger.Tracer) {
+	if assert.IsNil(libraryOpentracing.Tracer) {
 		return nil
 	}
 

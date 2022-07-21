@@ -4,12 +4,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/air-go/rpc/library/jaeger"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/why444216978/go-util/orm"
+
+	libraryOpentracing "github.com/air-go/rpc/library/opentracing"
 )
 
 type TestTable struct {
@@ -31,7 +32,7 @@ func Test_before(t *testing.T) {
 			}
 
 			tracer := mocktracer.New()
-			jaeger.Tracer = nil
+			libraryOpentracing.Tracer = nil
 
 			before(db)
 
@@ -44,7 +45,7 @@ func Test_before(t *testing.T) {
 			}
 
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 
 			before(db)
 
@@ -62,7 +63,7 @@ func Test_after(t *testing.T) {
 			}
 
 			tracer := mocktracer.New()
-			jaeger.Tracer = nil
+			libraryOpentracing.Tracer = nil
 
 			after(db)
 
@@ -75,7 +76,7 @@ func Test_after(t *testing.T) {
 			}
 
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 
 			after(db)
 
@@ -88,7 +89,7 @@ func Test_after(t *testing.T) {
 			}
 
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 
 			db = db.InstanceSet(gormSpanKey, 1)
 
@@ -103,9 +104,9 @@ func Test_after(t *testing.T) {
 			}
 
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 
-			span, _ := opentracing.StartSpanFromContextWithTracer(db.Statement.Context, jaeger.Tracer, componentGorm)
+			span, _ := opentracing.StartSpanFromContextWithTracer(db.Statement.Context, libraryOpentracing.Tracer, componentGorm)
 			db = db.InstanceSet(gormSpanKey, span)
 
 			after(db)
@@ -119,9 +120,9 @@ func Test_after(t *testing.T) {
 			}
 
 			tracer := mocktracer.New()
-			jaeger.Tracer = tracer
+			libraryOpentracing.Tracer = tracer
 
-			span, _ := opentracing.StartSpanFromContextWithTracer(db.Statement.Context, jaeger.Tracer, componentGorm)
+			span, _ := opentracing.StartSpanFromContextWithTracer(db.Statement.Context, libraryOpentracing.Tracer, componentGorm)
 			db = db.InstanceSet(gormSpanKey, span)
 			db.Error = errors.New("")
 
