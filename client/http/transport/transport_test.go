@@ -84,7 +84,7 @@ func TestRPC_Send(t *testing.T) {
 			// s.EXPECT().GetClientPem().Times(1).Return([]byte(""))
 			// s.EXPECT().GetClientKey().Times(1).Return([]byte(""))
 			s.EXPECT().Done(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
-			servicer.SetServicer(s)
+			_ = servicer.SetServicer(s)
 
 			// http mock
 			patch := gomonkey.ApplyMethodSeq(reflect.TypeOf(&http.Client{}), "Do", []gomonkey.OutputCell{

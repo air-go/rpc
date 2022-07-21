@@ -69,7 +69,9 @@ func LoadService(config *service.Config, opts ...service.Option) (err error) {
 		return
 	}
 
-	servicer.SetServicer(s)
+	if err = servicer.SetServicer(s); err != nil {
+		return
+	}
 
-	return nil
+	return
 }
