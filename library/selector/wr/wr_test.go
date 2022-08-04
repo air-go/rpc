@@ -68,6 +68,20 @@ func TestSelector_DeleteNode(t *testing.T) {
 }
 
 func TestSelector_GetNodes(t *testing.T) {
+	s := NewSelector("test_service")
+
+	nodes := []servicer.Node{
+		servicer.NewNode("127.0.0.1", 80),
+		servicer.NewNode("127.0.0.2", 80),
+		servicer.NewNode("127.0.0.3", 80),
+	}
+	for _, node := range nodes {
+		_ = s.AddNode(node)
+	}
+
+	n, err := s.GetNodes()
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(n))
 }
 
 func TestSelector_Select(t *testing.T) {
@@ -142,7 +156,7 @@ func testNoDeleteHandle(t *testing.T, nodes []servicer.Node) []servicer.Node {
 	s := NewSelector("test_service")
 
 	for _, node := range nodes {
-		s.AddNode(node)
+		_ = s.AddNode(node)
 	}
 
 	i := 1
@@ -169,7 +183,7 @@ func testDeleteHandle(t *testing.T, nodes []servicer.Node) []servicer.Node {
 	s := NewSelector("test_service")
 
 	for _, node := range nodes {
-		s.AddNode(node)
+		_ = s.AddNode(node)
 	}
 
 	i := 1
