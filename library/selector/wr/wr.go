@@ -132,7 +132,10 @@ func (s *Selector) GetNodes() (nodes []servicer.Node, err error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	return s.list, nil
+	nodes = make([]servicer.Node, len(s.list))
+	copy(nodes, s.list)
+
+	return nodes, nil
 }
 
 func (s *Selector) Select() (node servicer.Node, err error) {

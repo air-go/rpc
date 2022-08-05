@@ -4,6 +4,8 @@ package servicer
 import (
 	"context"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -14,23 +16,37 @@ const (
 
 var (
 	lock      sync.RWMutex
-	Servicers = make(map[string]Servicer)
+	servicers = make(map[string]Servicer)
 )
 
-func SetServicer(s Servicer) {
+func SetServicer(s Servicer) (err error) {
 	lock.Lock()
 	defer lock.Unlock()
-	Servicers[s.Name()] = s
+
+	name := s.Name()
+	if _, ok := servicers[name]; ok {
+		return errors.Errorf("repeat servicer: %s", name)
+	}
+	servicers[name] = s
+
+	return
+}
+
+func UpdateServicer(s Servicer) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	servicers[s.Name()] = s
 }
 
 func DelServicer(s Servicer) {
 	lock.Lock()
 	defer lock.Unlock()
-	delete(Servicers, s.Name())
+	delete(servicers, s.Name())
 }
 
 func GetServicer(serviceName string) (Servicer, bool) {
-	s, has := Servicers[serviceName]
+	s, has := servicers[serviceName]
 	return s, has
 }
 
