@@ -4,9 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/air-go/rpc/library/lock"
-
 	"github.com/go-redis/redis/v8"
+	"github.com/why444216978/go-util/assert"
+
+	"github.com/air-go/rpc/library/lock"
 )
 
 const (
@@ -18,11 +19,11 @@ const (
 var _ lock.Locker = (*RedisLock)(nil)
 
 type RedisLock struct {
-	c *redis.Client
+	c redis.Cmdable
 }
 
-func New(c *redis.Client) (*RedisLock, error) {
-	if c == nil {
+func New(c redis.Cmdable) (*RedisLock, error) {
+	if assert.IsNil(c) {
 		return nil, lock.ErrClientNil
 	}
 	return &RedisLock{

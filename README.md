@@ -94,6 +94,7 @@ QQ群：909211071
     - logger //日志
     - orm //db orm
     - otel //otel分布式链路追踪
+    - prometheus //prometheus监控
     - queue //消息队列
     - redis //redis
     - registry //注册中心
