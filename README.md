@@ -58,12 +58,14 @@ QQ群：909211071
 ✅ &nbsp;端口多路复用
 <br>
 ✅ &nbsp;gRPC
+<br>
+✅ &nbsp;Prometheus 监控
 <br><br>
 
 ## 后续逐渐支持
 日志收集
 <br>
-监控告警
+告警
 <br>
 限流
 <br>
@@ -94,6 +96,7 @@ QQ群：909211071
     - logger //日志
     - orm //db orm
     - otel //otel分布式链路追踪
+    - prometheus //prometheus监控
     - queue //消息队列
     - redis //redis
     - registry //注册中心
