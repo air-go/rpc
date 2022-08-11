@@ -10,7 +10,7 @@ import (
 	"github.com/air-go/rpc/server/http/response"
 )
 
-func ThrowPanic(l logger.Logger) gin.HandlerFunc {
+func PanicMiddleware(l logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func(c *gin.Context) {
 			if err := recover(); err != nil {

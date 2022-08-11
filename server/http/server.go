@@ -4,10 +4,12 @@ import (
 	"context"
 	"net/http"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/air-go/rpc/server"
 	"github.com/air-go/rpc/server/http/response"
@@ -20,6 +22,7 @@ type Server struct {
 	pprofTurn  bool
 	isDebug    bool
 	onShutdown []func()
+	metricsURI string
 }
 
 var _ server.Server = (*Server)(nil)
@@ -50,6 +53,10 @@ func WithDebug(isDebug bool) Option {
 
 func WithOnShutDown(onShutdown []func()) Option {
 	return func(s *Server) { s.onShutdown = onShutdown }
+}
+
+func WithMetrics(uri string) Option {
+	return func(s *Server) { s.metricsURI = strings.TrimSpace(uri) }
 }
 
 func New(addr string, router RegisterRouter, opts ...Option) *Server {
@@ -94,9 +101,11 @@ func (s *Server) initHandler() *gin.Engine {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	server.Use(s.middleware...)
+
 	s.startPprof(server)
 
-	server.Use(s.middleware...)
+	s.metrics(server)
 
 	s.router(server)
 
@@ -116,4 +125,14 @@ func (s *Server) startPprof(server *gin.Engine) {
 	runtime.SetBlockProfileRate(1)
 	runtime.SetMutexProfileFraction(1)
 	pprof.Register(server)
+}
+
+func (s *Server) metrics(server *gin.Engine) {
+	if s.metricsURI == "" {
+		return
+	}
+
+	server.GET(s.metricsURI, func(ctx *gin.Context) {
+		promhttp.Handler().ServeHTTP(ctx.Writer, ctx.Request)
+	})
 }
