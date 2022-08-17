@@ -2,13 +2,16 @@ package log
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
 	"net/http/httputil"
 	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 	"github.com/why444216978/go-util/sys"
 
 	"github.com/air-go/rpc/library/app"
@@ -82,11 +85,24 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 				if atomic.LoadInt32(&doneFlag) == 1 {
 					return
 				}
+
+				code := 499
+				err := ctx.Err()
+
+				if errors.Is(err, context.DeadlineExceeded) {
+					code = http.StatusGatewayTimeout
+				}
+
 				ctx = logger.AddField(ctx,
-					logger.Reflect(logger.Code, 499),
+					logger.Reflect(logger.Code, code),
 					logger.Reflect(logger.Cost, time.Since(start).Milliseconds()),
 				)
-				l.Warn(ctx, "client canceled")
+
+				if err == nil {
+					l.Warn(ctx, "client context Done")
+				} else {
+					l.Warn(ctx, err.Error())
+				}
 			}
 		}()
 
