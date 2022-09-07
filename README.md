@@ -18,7 +18,7 @@ Go 微服务框架，同时支持 gRPC 和 HTTP，封装各种常用组件，开
 3. 提 PR 共同维护
 <br><br>
 
-## 联系我
+# 联系我
 QQ群：909211071
 <br>
 个人QQ：444216978
@@ -26,7 +26,7 @@ QQ群：909211071
 微信：AirGo___
 <br><br>
 
-## 目前已支持
+# 目前已支持
 ✅ &nbsp;多格式配置读取
 <br>
 ✅ &nbsp;服务优雅关闭
@@ -62,7 +62,7 @@ QQ群：909211071
 ✅ &nbsp;Prometheus 监控
 <br><br>
 
-## 后续逐渐支持
+# 后续逐渐支持
 日志收集
 <br>
 告警
@@ -113,10 +113,13 @@ QQ群：909211071
 ```
 <br>
 
-## Example
+# Example
 <a href="https://github.com/air-go/rpc-example/blob/master/http/main.go">HTTP</a>
 <br>
 <a href="https://github.com/air-go/rpc-example/blob/master/grpc/main.go">gRPC</a>
 <br>
 <a href="https://github.com/air-go/rpc-example/blob/master/trace">完整业务架构</a>
 <br>
+
+---
+[![Star History Chart](https://api.star-history.com/svg?repos=air-go/rpc&type=Date)](https://star-history.com/#air-go/rpc&Date)
