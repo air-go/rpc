@@ -79,9 +79,6 @@ QQ群：909211071
   - client
     - grpc //grpc客户端
     - http //http客户端
-  - server
-    - grpc //grpc服务端
-    - http //http服务端
   - library //基础组件库，不建议修改
     - app //app
     - apollo //阿波罗
@@ -91,7 +88,8 @@ QQ群：909211071
     - etcd //etcd
     - grpc //grpc封装
     - opentracing //opentracing分布式链路追踪
-    - job //离线任务
+    - job //单机离线任务（单机简易版，后续接入成熟组件）
+    - limiter //限流
     - lock //分布式锁
     - logger //日志
     - orm //db orm
@@ -103,6 +101,14 @@ QQ群：909211071
     - reliablequeue //可靠消息队列
     - selector //负载均衡器
     - servicer //下游服务
+  - mock
+    - third //三方单测mock
+    - third //常见mock工具封装
+  - server
+    - grpc //grpc服务端
+    - http //http服务端  
+  - library //基础组件库，不建议修改
+  - third //三方依赖引入
   .gitignore
   Dockerfile
   LICENSE

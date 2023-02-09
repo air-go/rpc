@@ -5,9 +5,11 @@ go 1.16
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/agiledragon/gomonkey/v2 v2.4.0 // indirect
+	github.com/alicebob/miniredis/v2 v2.30.0 // indirect
 	github.com/antihax/optional v1.0.0 // indirect
 	github.com/apolloconfig/agollo/v4 v4.1.1 // indirect
 	github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6 // indirect
+	github.com/benbjohnson/clock v1.3.0
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/coreos/bbolt v1.3.2 // indirect
 	github.com/coreos/go-etcd v2.0.0+incompatible // indirect
@@ -16,6 +18,7 @@ require (
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/gin-contrib/cors v1.3.1 // indirect
 	github.com/gin-contrib/pprof v1.3.0 // indirect
@@ -25,7 +28,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/go-redis/redismock/v8 v8.0.6
 	github.com/golang/glog v1.0.0 // indirect
-	github.com/golang/mock v1.6.0 // indirect
+	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.0.0 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
@@ -36,10 +39,12 @@ require (
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645 // indirect
 	github.com/hexops/valast v1.4.1 // indirect
 	github.com/jarcoal/httpmock v1.2.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/lestrrat-go/strftime v1.0.4 // indirect
+	github.com/mattn/go-sqlite3 v1.14.16 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/opentracing/opentracing-go v1.2.0
@@ -90,9 +95,10 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0 // indirect
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/go-playground/validator.v8 v8.18.2 // indirect
-	gorm.io/driver/mysql v1.1.0
-	gorm.io/gorm v1.21.9
-	gorm.io/plugin/dbresolver v1.1.0
+	gorm.io/driver/mysql v1.4.6
+	gorm.io/driver/sqlite v1.4.4 // indirect
+	gorm.io/gorm v1.24.5
+	gorm.io/plugin/dbresolver v1.4.1
 	honnef.co/go/tools v0.0.1-2020.1.4 // indirect
 	mvdan.cc/gofumpt v0.3.1 // indirect
 	rsc.io/quote/v3 v3.1.0 // indirect
