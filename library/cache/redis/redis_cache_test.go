@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/air-go/rpc/library/lock/mock"
-	redismock "github.com/air-go/rpc/mock/redis"
+	redismock "github.com/air-go/rpc/mock/third/redis"
 )
 
 func TestNew(t *testing.T) {
