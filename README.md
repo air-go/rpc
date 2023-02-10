@@ -103,7 +103,7 @@ QQ群：909211071
     - servicer //下游服务
   - mock
     - third //三方单测mock
-    - third //常见mock工具封装
+    - tools //常见mock工具封装
   - server
     - grpc //grpc服务端
     - http //http服务端  
