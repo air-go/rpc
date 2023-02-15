@@ -3,7 +3,7 @@ name: Go
 on: [push, pull_request]
 
 jobs:
-  lint-and-ut:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -25,9 +25,25 @@ jobs:
           gofmt -l .
           # go install mvdan.cc/gofumpt@v0.2.0
           # test -z "$(gofumpt -l -extra .)" 
+
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+
+      - uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Unit Test
         run: go test -v -race -gcflags=-l -cover $(/usr/local/go16/bin/go list ./... | grep -vE "vendor" | grep -vE "mock") -covermode=atomic -coverprofile=coverage.txt ./...
-        
       #- name: Codecov
       #  uses: codecov/codecov-action@v3
       #  with:
@@ -35,7 +51,6 @@ jobs:
       #    file: ./coverage.txt
       #    fail_ci_if_error: true
       #    verbose: true
-
 
   benchmark:
     runs-on: ubuntu-latest

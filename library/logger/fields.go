@@ -34,6 +34,7 @@ const (
 	ServerIP    = "server_ip"
 	ServerPort  = "server_port"
 	API         = "api"
+	URI         = "uri"
 	Cost        = "cost"
 	Timeout     = "timeout"
 	Trace       = "trace"
@@ -55,6 +56,7 @@ type Fields struct {
 	ServerIP    string        `json:"server_ip"`
 	ServerPort  int           `json:"server_port"`
 	API         string        `json:"api"`
+	URI         string        `json:"uri"`
 	Cost        int64         `json:"cost"`
 	Timeout     time.Duration `json:"timeout"`
 	Trace       string        `json:"trace"`
