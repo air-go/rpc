@@ -17,7 +17,7 @@ import (
 	"github.com/air-go/rpc/library/logger/zap/service"
 	"github.com/air-go/rpc/library/servicer"
 	"github.com/air-go/rpc/library/servicer/mock"
-	"github.com/air-go/rpc/mock/third/server"
+	"github.com/air-go/rpc/mock/tools/server"
 	jsonCodec "github.com/why444216978/codec/json"
 )
 

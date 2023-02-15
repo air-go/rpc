@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/air-go/rpc/mock/third/listener"
+	"github.com/air-go/rpc/mock/tools/listener"
 )
 
 type httpServer struct {
