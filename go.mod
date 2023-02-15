@@ -30,7 +30,7 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/turtlemonvh/gin-wraphh v0.0.0-20160304035037-ea8e4927b3a6
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
-	github.com/why444216978/codec v1.0.2
+	github.com/why444216978/codec v1.0.3
 	github.com/why444216978/go-util v1.0.20
 	go.etcd.io/etcd/api/v3 v3.5.2
 	go.etcd.io/etcd/client/v3 v3.5.0

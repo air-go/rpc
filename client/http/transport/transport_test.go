@@ -1,14 +1,14 @@
 package transport
 
 import (
-	"bytes"
 	"context"
-	"io/ioutil"
 	"net/http"
-	"reflect"
+	"strconv"
+	"strings"
 	"testing"
+	"time"
 
-	"github.com/agiledragon/gomonkey/v2"
+	"github.com/gin-gonic/gin"
 	"github.com/golang/mock/gomock"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -17,6 +17,7 @@ import (
 	"github.com/air-go/rpc/library/logger/zap/service"
 	"github.com/air-go/rpc/library/servicer"
 	"github.com/air-go/rpc/library/servicer/mock"
+	"github.com/air-go/rpc/mock/third/server"
 	jsonCodec "github.com/why444216978/codec/json"
 )
 
@@ -29,50 +30,77 @@ func TestRPC_Send(t *testing.T) {
 	l := testNew()
 
 	convey.Convey("TestRPC_Send", t, func() {
-		convey.Convey("response == nil", func() {
-			req := httpClient.Request{
-				URI:    "/test",
-				Method: http.MethodGet,
-				Header: nil,
-				Body:   map[string]interface{}{},
-				Codec:  jsonCodec.JSONCodec{},
-			}
+		convey.Convey("request is nil", func() {
 			ctx := context.Background()
-			err := l.Send(ctx, "test", req, nil)
+			err := l.Send(ctx, nil, nil)
 			assert.NotNil(t, err)
 		})
-		convey.Convey("assert.IsNil(request.Codec)", func() {
-			req := httpClient.Request{
-				URI:    "/test",
-				Method: http.MethodGet,
-				Header: nil,
-				Body:   map[string]interface{}{},
+		convey.Convey("response is nil", func() {
+			req := &httpClient.DefaultRequest{
+				ServiceName: "test",
+				Path:        "/test",
+				Method:      http.MethodGet,
+				Header:      nil,
+				Body:        map[string]interface{}{},
+				Codec:       jsonCodec.JSONCodec{},
+			}
+			ctx := context.Background()
+			err := l.Send(ctx, req, nil)
+			assert.NotNil(t, err)
+		})
+		convey.Convey("request codec is nil", func() {
+			req := &httpClient.DefaultRequest{
+				ServiceName: "test",
+				Path:        "/test",
+				Method:      http.MethodGet,
+				Header:      nil,
+				Body:        map[string]interface{}{},
 			}
 			resp := &httpClient.Response{
 				Body: new(map[string]interface{}),
 			}
 			ctx := context.Background()
-			err := l.Send(ctx, "test", req, resp)
+			err := l.Send(ctx, req, resp)
 			assert.NotNil(t, err)
 		})
-		convey.Convey("assert.IsNil(response.Codec)", func() {
-			req := httpClient.Request{
-				URI:    "/test",
-				Method: http.MethodGet,
-				Header: nil,
-				Body:   map[string]interface{}{},
-				Codec:  jsonCodec.JSONCodec{},
+		convey.Convey("response codec is nil", func() {
+			req := &httpClient.DefaultRequest{
+				ServiceName: "test",
+				Path:        "/test",
+				Method:      http.MethodGet,
+				Header:      nil,
+				Body:        map[string]interface{}{},
+				Codec:       jsonCodec.JSONCodec{},
 			}
 			resp := &httpClient.Response{
 				Body: new(map[string]interface{}),
 			}
 			ctx := context.Background()
-			err := l.Send(ctx, "test", req, resp)
+			err := l.Send(ctx, req, resp)
 			assert.NotNil(t, err)
 		})
-		convey.Convey("success", func() {
+		convey.Convey("success default request", func() {
 			ctx := context.Background()
-			node := servicer.NewNode("127.0.0.1", 80)
+
+			// http mock
+			srv, err := server.NewHTTP(func(server *gin.Engine) {
+				server.GET("/test", func(c *gin.Context) {
+					c.JSON(http.StatusOK, nil)
+					c.Abort()
+				})
+			})
+			assert.Nil(t, err)
+			go func() {
+				_ = srv.Start()
+			}()
+			time.Sleep(time.Second * 1)
+			defer func() {
+				_ = srv.Stop()
+			}()
+
+			arr := strings.Split(srv.Addr(), ":")
+			port, _ := strconv.Atoi(arr[1])
+			node := servicer.NewNode(arr[0], port)
 
 			// servicer mock
 			ctl := gomock.NewController(t)
@@ -86,27 +114,20 @@ func TestRPC_Send(t *testing.T) {
 			s.EXPECT().Done(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
 			_ = servicer.SetServicer(s)
 
-			// http mock
-			patch := gomonkey.ApplyMethodSeq(reflect.TypeOf(&http.Client{}), "Do", []gomonkey.OutputCell{
-				{Values: gomonkey.Params{&http.Response{
-					StatusCode: http.StatusOK,
-					Body:       ioutil.NopCloser(bytes.NewBufferString("{}")),
-				}, nil}},
-			})
-			defer patch.Reset()
-
-			req := httpClient.Request{
-				URI:    "/test",
-				Method: http.MethodGet,
-				Header: nil,
-				Body:   map[string]interface{}{},
-				Codec:  jsonCodec.JSONCodec{},
+			req := &httpClient.DefaultRequest{
+				ServiceName: "test",
+				Path:        "/test",
+				Method:      http.MethodGet,
+				Header:      nil,
+				Body:        map[string]interface{}{},
+				Codec:       jsonCodec.JSONCodec{},
 			}
 			resp := &httpClient.Response{
 				Body:  new(map[string]interface{}),
 				Codec: jsonCodec.JSONCodec{},
 			}
-			err := l.Send(ctx, "test", req, resp)
+			// TODO check resp data
+			err = l.Send(ctx, req, resp)
 			assert.Nil(t, err)
 		})
 	})
