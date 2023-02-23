@@ -205,7 +205,8 @@ func (rq *ReliableQueue) publish(ctx context.Context, records []ReliableMqMessag
 	for _, v := range records {
 		record := v
 		g.Go(func() (err error) {
-			return rq.queue.Produce(ctx, record)
+			_, err = rq.queue.Produce(ctx, record)
+			return
 		})
 	}
 	return g.Wait()

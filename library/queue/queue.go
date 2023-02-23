@@ -4,18 +4,15 @@ import (
 	"context"
 )
 
-type ProduceOption struct{}
+type Consumer func(context.Context, []byte) (retry bool, err error)
 
-type ProduceOptionFunc func(o *ProduceOption)
-
-type ConsumeOption struct{}
-
-type ConsumeOptionFunc func(o *ConsumeOption)
-
-type Consumer func(context.Context, interface{}) (retry bool, err error)
+type ProduceResponse struct {
+	Partition int32
+	Offset    int64
+}
 
 type Queue interface {
-	Produce(ctx context.Context, msg interface{}, opts ...ProduceOptionFunc) error
-	Consume(consumer Consumer)
+	Produce(ctx context.Context, msg interface{}) (ProduceResponse, error)
+	Consume(params interface{}) error
 	Shutdown() error
 }
