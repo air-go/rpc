@@ -139,13 +139,15 @@ func (cli *Client) Produce(ctx context.Context, msg interface{}) (
 //		Consumer:  queue.Consumer,
 //	}
 type ConsumeParams struct {
-	Queue     string
-	AutoAck   bool
-	Exclusive bool
-	NoLocal   bool
-	NoWait    bool
-	Args      amqp.Table
-	Consumer  queue.Consumer
+	Queue         string
+	AutoAck       bool
+	Exclusive     bool
+	NoLocal       bool
+	NoWait        bool
+	Args          amqp.Table
+	RejectRequeue bool
+	MultipleAck   bool
+	Consumer      queue.Consumer
 }
 
 func (cli *Client) Consume(params interface{}) (err error) {
@@ -200,13 +202,13 @@ func (cli *Client) Consume(params interface{}) (err error) {
 			}
 
 			if retry {
-				err = d.Reject(true)
+				err = d.Reject(p.RejectRequeue)
 				cli.opts.logger.Error(ctx, "rabbitMQConsumeRejectErr", logger.Error(err))
 				return
 			}
 
 			if !retry {
-				err = d.Ack(true)
+				err = d.Ack(p.MultipleAck)
 				cli.opts.logger.Error(ctx, "rabbitMQConsumeAckErr", logger.Error(err))
 			}
 		}(d)
@@ -220,7 +222,6 @@ func (cli *Client) Shutdown() (err error) {
 }
 
 func (cli *Client) channel() (channel *amqp.Channel, err error) {
-	// TODO channel pool
 	if channel, err = cli.connection.Channel(); err != nil {
 		return
 	}
@@ -248,7 +249,10 @@ func (cli *Client) channel() (channel *amqp.Channel, err error) {
 }
 
 func (cli *Client) connect() (err error) {
-	// TODO connection pool
+	// TODO Implement connection pool.
+	// Connection and channel are one-to-many.
+	// Support to control the number of connections.
+	// Support to control the number of channels in per pool.
 	cli.connection, err = amqp.Dial(cli.url)
 	if err != nil {
 		return errors.Wrap(err, "amqp.Dial fail")
