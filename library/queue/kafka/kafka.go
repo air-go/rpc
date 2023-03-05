@@ -189,7 +189,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 						c.opts.logger.Error(ctx, "kafkaConsumeErr", logger.Error(err))
 					}
 				}()
-				retry, err = c.consumer(ctx, msg.Value)
+				_, retry, err = c.consumer(ctx, msg.Value)
 				if err != nil && c.opts.consumeLog {
 					c.opts.logger.Error(ctx, "kafkaConsumeRejectErr",
 						logger.Error(err),

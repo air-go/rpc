@@ -139,15 +139,14 @@ func (cli *Client) Produce(ctx context.Context, msg interface{}) (
 //		Consumer:  queue.Consumer,
 //	}
 type ConsumeParams struct {
-	Queue         string
-	AutoAck       bool
-	Exclusive     bool
-	NoLocal       bool
-	NoWait        bool
-	Args          amqp.Table
-	RejectRequeue bool
-	MultipleAck   bool
-	Consumer      queue.Consumer
+	Queue       string
+	AutoAck     bool
+	Exclusive   bool
+	NoLocal     bool
+	NoWait      bool
+	Args        amqp.Table
+	MultipleAck bool
+	Consumer    queue.Consumer
 }
 
 func (cli *Client) Consume(params interface{}) (err error) {
@@ -182,6 +181,7 @@ func (cli *Client) Consume(params interface{}) (err error) {
 	for d := range deliveries {
 		go func(d amqp.Delivery) {
 			ctx := context.Background()
+			var reject bool
 			var retry bool
 			var err error
 			defer func() {
@@ -189,27 +189,32 @@ func (cli *Client) Consume(params interface{}) (err error) {
 					cli.opts.logger.Error(ctx, "rabbitMQConsumeRecover", logger.Reflect("error", err))
 					return
 				}
-				if err != nil {
-					cli.opts.logger.Error(ctx, "rabbitMQConsumeErr", logger.Error(err))
-				}
 			}()
 
-			retry, err = p.Consumer(ctx, d.Body)
+			reject, retry, err = p.Consumer(ctx, d.Body)
 			if err != nil && cli.opts.consumeLog {
-				cli.opts.logger.Error(ctx, "rabbitMQConsumeRejectErr",
+				cli.opts.logger.Error(ctx, "rabbitMQHandleConsumerFuncErr",
 					logger.Error(err),
 					logger.Reflect("retry", retry))
 			}
 
-			if retry {
-				err = d.Reject(p.RejectRequeue)
-				cli.opts.logger.Error(ctx, "rabbitMQConsumeRejectErr", logger.Error(err))
+			// If your queue set x-dead-letter-exchange, reject with requeue false can republish to dead letter queue.
+			if reject {
+				if err = d.Reject(false); err != nil {
+					cli.opts.logger.Error(ctx, "rabbitMQConsumeRejectFalseErr", logger.Error(err))
+				}
 				return
 			}
 
-			if !retry {
-				err = d.Ack(p.MultipleAck)
-				cli.opts.logger.Error(ctx, "rabbitMQConsumeAckErr", logger.Error(err))
+			if retry {
+				// Resend to other consumers.
+				if err = d.Reject(true); err != nil {
+					cli.opts.logger.Error(ctx, "rabbitMQConsumeRejectTrueErr", logger.Error(err))
+				}
+			} else {
+				if err = d.Ack(p.MultipleAck); err != nil {
+					cli.opts.logger.Error(ctx, "rabbitMQConsumeAckErr", logger.Error(err))
+				}
 			}
 		}(d)
 	}
@@ -232,6 +237,7 @@ func (cli *Client) channel() (channel *amqp.Channel, err error) {
 	}
 
 	ctx := context.Background()
+	ack, nack := channel.NotifyConfirm(make(chan uint64), make(chan uint64))
 	select {
 	case r := <-channel.NotifyClose(make(chan *amqp.Error)):
 		cli.opts.logger.Error(ctx, "rabbitMQChannelNotifyCloseErr",
@@ -240,6 +246,12 @@ func (cli *Client) channel() (channel *amqp.Channel, err error) {
 		)
 	case r := <-channel.NotifyCancel(make(chan string)):
 		cli.opts.logger.Error(ctx, "rabbitMQChannelNotifyCancelErr", logger.Error(errors.New(r)))
+	case r := <-channel.NotifyReturn(make(chan amqp.Return)):
+		cli.opts.logger.Error(ctx, "rabbitMQChannelNotifyReturnErr", logger.Reflect("return", r))
+	case r := <-ack:
+		_ = r
+	case r := <-nack:
+		cli.opts.logger.Error(ctx, "rabbitMQChannelNotifyConfirmNack", logger.Reflect("delivery_tag", r))
 	case r := <-channel.NotifyReturn(make(chan amqp.Return)):
 		cli.opts.logger.Error(ctx, "rabbitMQChannelNotifyReturnErr", logger.Reflect("return", r))
 	default:
