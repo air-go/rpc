@@ -8,7 +8,7 @@ type Consumer func(context.Context, []byte) (reject, retry bool, err error)
 
 type ProduceResponse struct {
 	Partition int32
-	Offset    int64
+	Offset    uint64
 }
 
 type Queue interface {

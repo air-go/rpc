@@ -228,9 +228,11 @@ func (cli *Client) Produce(ctx context.Context, msg interface{}) (
 		return
 	}
 
-	if response.Partition, response.Offset, err = cli.syncProducer.SendMessage(params.Message); err != nil {
+	var offset int64
+	if response.Partition, offset, err = cli.syncProducer.SendMessage(params.Message); err != nil {
 		return
 	}
+	response.Offset = uint64(offset)
 
 	return
 }
