@@ -13,7 +13,7 @@ type RateLimiter interface {
 	ShouldAllow(ctx context.Context, key string, size time.Duration, limit int64) (allow bool, err error)
 }
 
-// DefaultLimiter implements Sliding-Windows-Log rate limiter algorithm
+// TODO implement limiter interface
 type DefaultLimiter struct {
 	RedisClient redis.Cmdable
 }

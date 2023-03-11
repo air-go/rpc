@@ -42,11 +42,19 @@ QQ群：909211071
 <br>
 ✅ &nbsp;日志抽象和标准字段统一（请求、DB、Redis、RPC）
 <br>
-✅ &nbsp;DB
+✅ &nbsp;DB（ORM）
+<br>
+✅ &nbsp;Redis
 <br>
 ✅ &nbsp;RabbitMQ
 <br>
-✅ &nbsp;Redis
+✅ &nbsp;Kafka
+<br>
+✅ &nbsp;Apollo配置中心
+<br>
+✅ &nbsp;cron定时任务
+<br>
+✅ &nbsp;单机和分布式限流
 <br>
 ✅ &nbsp;分布式缓存（解决缓存穿透、击穿、雪崩）
 <br>
@@ -59,6 +67,8 @@ QQ群：909211071
 ✅ &nbsp;服务发现
 <br>
 ✅ &nbsp;负载均衡
+<br>
+✅ &nbsp;通用链接池
 <br>
 ✅ &nbsp;HTTP-RPC 超时传递
 <br>
@@ -101,6 +111,7 @@ QQ群：909211071
     - logger //日志
     - orm //db orm
     - otel //otel分布式链路追踪
+    - pool //通用链接池
     - prometheus //prometheus监控
     - queue //消息队列
     - redis //redis

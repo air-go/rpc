@@ -7,6 +7,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/why444216978/go-util/assert"
+	panicErr "github.com/why444216978/go-util/panic"
 	"go.uber.org/multierr"
 
 	"github.com/air-go/rpc/library/logger"
@@ -181,7 +182,8 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 				var retry bool
 				var err error
 				defer func() {
-					if err := recover(); err != nil {
+					if r := recover(); r != nil {
+						err := panicErr.NewPanicError(r)
 						c.opts.logger.Error(ctx, "kafkaConsumeRecover", logger.Reflect("error", err))
 						return
 					}
