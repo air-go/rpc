@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	panicErr "github.com/why444216978/go-util/panic"
 
 	"github.com/air-go/rpc/library/logger"
 	"github.com/air-go/rpc/server/http/response"
@@ -13,14 +14,8 @@ import (
 func PanicMiddleware(l logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func(c *gin.Context) {
-			if err := recover(); err != nil {
-				// mailDebugStack := ""
-				// debugStack := make(map[int]interface{})
-				// for k, v := range strings.Split(string(debug.Stack()), "\n") {
-				// 	//fmt.Println(v)
-				// 	mailDebugStack += v + "<br>"
-				// 	debugStack[k] = v
-				// }
+			if r := recover(); r != nil {
+				err := panicErr.NewPanicError(r)
 
 				ctx := c.Request.Context()
 

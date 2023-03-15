@@ -25,8 +25,8 @@ func TestLimiter(t *testing.T) {
 
 	lm := NewMockLeakyBucket(ctl)
 	lm.EXPECT().Allow(ctx, r.Name, 1).Times(1).Return(true, nil)
-	lm.EXPECT().SetLimit(1).Times(1)
-	lm.EXPECT().SetBurst(1).Times(1)
+	lm.EXPECT().SetRate(1).Times(1)
+	lm.EXPECT().SetVolume(1).Times(1)
 
 	patch := gomonkey.ApplyFuncSeq((*leakyBucketLimiter).getLimiter, []gomonkey.OutputCell{
 		{Values: gomonkey.Params{lm}},
@@ -41,7 +41,7 @@ func TestLimiter(t *testing.T) {
 	l.SetBurst(ctx, r)
 }
 
-func Test_leakyBucketLimiter_getLimiter(t *testing.T) {
+func Test_getLimiter(t *testing.T) {
 	l := &leakyBucketLimiter{}
 	r1 := limiter.Resource{
 		Name:  "test1",

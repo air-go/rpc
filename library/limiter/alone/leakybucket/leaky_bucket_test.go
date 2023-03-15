@@ -52,7 +52,7 @@ func TestSetLimit(t *testing.T) {
 	assert.Equal(t, false, rl.Allow())
 
 	// test add 1 rate, dynamic change rate to 2, 2 can be processed
-	rl.SetLimit(2)
+	rl.SetRate(2)
 	second := first.Add(time.Second)
 	c.Set(second)
 	assert.Equal(t, true, rl.Allow())
@@ -72,7 +72,7 @@ func TestSetBurst(t *testing.T) {
 	assert.Equal(t, false, rl.Allow())
 
 	// test add 1 second perRequest, dynamic change burst to 3, 3 can be processed
-	rl.SetBurst(3)
+	rl.SetRate(3)
 	second := first.Add(time.Second)
 	c.Set(second)
 	assert.Equal(t, true, rl.Allow())

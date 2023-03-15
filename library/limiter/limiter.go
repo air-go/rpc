@@ -2,12 +2,14 @@ package limiter
 
 import (
 	"context"
+	"time"
 )
 
 type Resource struct {
-	Name  string
-	Limit int
-	Burst int
+	Name   string
+	Limit  int
+	Burst  int
+	Window time.Duration
 }
 
 type Entry interface {
@@ -23,4 +25,6 @@ type Limiter interface {
 	SetLimit(ctx context.Context, r Resource)
 	// SetBurst set a new burst
 	SetBurst(ctx context.Context, r Resource)
+	// SetWindow set a new window
+	SetWindow(ctx context.Context, r Resource)
 }

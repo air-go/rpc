@@ -16,11 +16,11 @@ import (
 
 type Queue struct{}
 
-func (*Queue) Produce(ctx context.Context, msg interface{}, opts ...queue.ProduceOptionFunc) error {
-	return nil
+func (*Queue) Produce(ctx context.Context, msg interface{}) (r queue.ProduceResponse, e error) {
+	return
 }
 
-func (*Queue) Consume(consumer queue.Consumer) {}
+func (*Queue) Consume(params interface{}) error { return nil }
 
 func (*Queue) Shutdown() error { return nil }
 

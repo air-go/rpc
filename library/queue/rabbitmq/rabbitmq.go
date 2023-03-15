@@ -2,84 +2,69 @@ package rabbitmq
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 
-	"github.com/air-go/rpc/library/queue"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
-)
+	"github.com/why444216978/go-util/assert"
+	panicErr "github.com/why444216978/go-util/panic"
 
-const (
-	ExchangeTypeDirect  = "direct"
-	ExchangeTypeFanout  = "fanout"
-	ExchangeTypeTopic   = "topic"
-	ExchangeTypeHeaders = "headers"
+	"github.com/air-go/rpc/library/logger"
+	"github.com/air-go/rpc/library/logger/zap"
+	"github.com/air-go/rpc/library/queue"
 )
 
 type Config struct {
-	ServiceName  string
-	Host         string
-	Port         int
-	Virtual      string
-	User         string
-	Pass         string
-	ExchangeType string
-	ExchangeName string
-	QueueName    string
-	RouteName    string
+	ServiceName string
+	Host        string
+	Port        int
+	Virtual     string
+	User        string
+	Pass        string
 }
 
-type Option struct {
-	declareExchange bool
-	declareQueue    bool
-	bindQueue       bool
-	qos             int
+type option struct {
+	logger     logger.Logger
+	consumeLog bool
+	qos        int
 }
 
-type OptionFunc func(*Option)
+type optionFunc func(*option)
 
-func defaultOption() *Option {
-	return &Option{
-		declareExchange: false,
-		declareQueue:    false,
-		bindQueue:       false,
-		qos:             10,
+func defaultOption() *option {
+	return &option{
+		logger:     zap.StdLogger,
+		consumeLog: false,
+		qos:        10,
 	}
 }
 
-func WithDeclareExchange(turn bool) OptionFunc {
-	return func(o *Option) { o.declareExchange = turn }
+func WithLogger(l logger.Logger) optionFunc {
+	return func(o *option) { o.logger = l }
 }
 
-func WithDeclareQueue(turn bool) OptionFunc {
-	return func(o *Option) { o.declareQueue = turn }
+func OpenConsumeLog() optionFunc {
+	return func(o *option) { o.consumeLog = true }
 }
 
-func WithBindQueue(turn bool) OptionFunc {
-	return func(o *Option) { o.bindQueue = turn }
+func WithQos(qos int) optionFunc {
+	return func(o *option) { o.qos = qos }
 }
 
-func WithQos(qos int) OptionFunc {
-	return func(o *Option) { o.qos = qos }
+type Client struct {
+	opts        *option
+	connection  *amqp.Connection
+	serviceName string
+	url         string
+	close       chan struct{}
 }
 
-type RabbitMQ struct {
-	opts         *Option
-	connection   *amqp.Connection
-	channel      *amqp.Channel
-	name         string
-	url          string
-	exchangeName string
-	exchangeType string
-	queueName    string
-	routeName    string
-}
+var _ queue.Queue = (*Client)(nil)
 
-func New(cfg *Config, opts ...OptionFunc) (*RabbitMQ, error) {
-	if cfg == nil {
-		return nil, errors.New("cfg is nil")
+func New(config *Config, opts ...optionFunc) (cli *Client, err error) {
+	if config == nil {
+		err = errors.New("config is nil")
+		return
 	}
 
 	opt := defaultOption()
@@ -87,165 +72,343 @@ func New(cfg *Config, opts ...OptionFunc) (*RabbitMQ, error) {
 		o(opt)
 	}
 
-	return &RabbitMQ{
-		opts:         opt,
-		name:         cfg.ServiceName,
-		url:          fmt.Sprintf("amqp://%s:%s@%s:%d/%s", cfg.User, cfg.Pass, cfg.Host, cfg.Port, cfg.Virtual),
-		exchangeName: cfg.ExchangeName,
-		exchangeType: cfg.ExchangeType,
-		queueName:    cfg.QueueName,
-		routeName:    cfg.RouteName,
-	}, nil
-}
-
-func (q *RabbitMQ) Produce(ctx context.Context, msg interface{}, opts ...queue.ProduceOptionFunc) (err error) {
-	m, ok := msg.([]byte)
-	if !ok {
-		return errors.New("RabbitMQ msg not []byte")
-	}
-
-	if err = q.connect(); err != nil {
+	if assert.IsNil(opt.logger) {
+		err = errors.New("logger is nil")
 		return
 	}
 
-	err = q.channel.Publish(
-		q.exchangeName, // exchange
-		q.routeName,    // routing key
-		true,           // set true, when no queue match Basic.Return
-		false,          // set false, not dependent consumers
-		amqp.Publishing{
-			DeliveryMode: amqp.Persistent,
-			ContentType:  "text/plain",
-			Body:         m,
-		})
-	if err != nil {
-		return errors.Wrap(err, "channel.Publish fail")
+	cli = &Client{
+		opts:        opt,
+		serviceName: config.ServiceName,
+		url:         fmt.Sprintf("amqp://%s:%s@%s:%d/%s", config.User, config.Pass, config.Host, config.Port, config.Virtual),
+	}
+
+	if err = cli.connect(); err != nil {
+		return
 	}
 
 	return
 }
 
-func (q *RabbitMQ) Consume(consumer queue.Consumer) {
-	err := q.connect()
-	if err != nil {
-		// TODO 集成log
-		log.Println(err)
+type ProduceMessage struct {
+	Exchange  string // exchange
+	Key       string // routing key
+	Mandatory bool   // set true, when no queue match Basic.Return
+	Immediate bool   // set false, not dependent consumers
+	// amqp.Publishing{
+	// 	DeliveryMode: amqp.Persistent,
+	// 	ContentType:  "text/plain",
+	// 	Body:         m,
+	// })
+	Message     amqp.Publishing
+	OpenConfirm bool
+}
+
+func (cli *Client) Produce(ctx context.Context, msg interface{}) (
+	response queue.ProduceResponse, err error,
+) {
+	m, ok := msg.(*ProduceMessage)
+	if !ok {
+		err = errors.New("message assert fail")
 		return
 	}
 
-	deliveries, err := q.channel.Consume(
-		q.queueName, // queu name
-		q.name,      // name,
-		false,       // no autoAck
-		false,       // exclusive
-		false,       // noLocal
-		false,       // noWait
-		nil,         // arguments
+	if m.OpenConfirm {
+		return cli.publishConfirm(ctx, m)
+	}
+
+	return cli.publish(ctx, m)
+}
+
+type publishResult struct {
+	deliverTag uint64
+	success    bool
+}
+
+func (cli *Client) publish(ctx context.Context, m *ProduceMessage) (
+	response queue.ProduceResponse, err error,
+) {
+	channel, err := cli.newChannel(ctx)
+	if err != nil {
+		return
+	}
+	defer channel.Close()
+	if err = channel.Publish(
+		m.Exchange,
+		m.Key,
+		m.Mandatory,
+		m.Immediate,
+		m.Message,
+	); err != nil {
+		return
+	}
+
+	return
+}
+
+func (cli *Client) publishConfirm(ctx context.Context, m *ProduceMessage) (
+	response queue.ProduceResponse, err error,
+) {
+	channel, ack, nack, err := cli.newConfirmChannel(ctx)
+	if err != nil {
+		return
+	}
+
+	if err = channel.Publish(
+		m.Exchange,
+		m.Key,
+		m.Mandatory,
+		m.Immediate,
+		m.Message,
+	); err != nil {
+		return
+	}
+
+	result := make(chan publishResult)
+	select {
+	case r := <-ack:
+		result <- publishResult{
+			deliverTag: r,
+			success:    true,
+		}
+	case r := <-nack:
+		result <- publishResult{
+			deliverTag: r,
+			success:    false,
+		}
+	}
+	r := <-result
+	response.Offset = r.deliverTag
+	if !r.success {
+		err = errors.New("publish confirm nack")
+		return
+	}
+
+	return
+}
+
+//	params := ConsumeParams{
+//		queue:     "queue_name",
+//		AutoAck:   false,
+//		Exclusive: false,
+//		NoLocal:   false,
+//		NoWait:    false,
+//		Args:      nil,
+//		Consumer:  queue.Consumer,
+//	}
+type ConsumeParams struct {
+	Context     context.Context
+	Queue       string
+	AutoAck     bool
+	Exclusive   bool
+	NoLocal     bool
+	NoWait      bool
+	Args        amqp.Table
+	MultipleAck bool
+	Consumer    queue.Consumer
+}
+
+func (cli *Client) Consume(params interface{}) (err error) {
+	p, ok := params.(*ConsumeParams)
+	if !ok {
+		return errors.New("params assert fail")
+	}
+
+	if assert.IsNil(p.Consumer) {
+		return errors.New("consumer is nil")
+	}
+
+	if assert.IsNil(p.Context) {
+		return errors.New("context is nil")
+	}
+
+	channel, err := cli.newChannel(p.Context)
+	if err != nil {
+		return
+	}
+	defer channel.Close()
+
+	deliveries, err := channel.Consume(
+		p.Queue,
+		p.Queue,
+		p.AutoAck,
+		p.Exclusive,
+		p.NoLocal,
+		p.NoWait,
+		p.Args,
 	)
 	if err != nil {
-		// TODO 集成log
-		log.Printf("Queue Consume: %s", err)
 		return
 	}
 
 	for d := range deliveries {
 		go func(d amqp.Delivery) {
+			ctx := context.Background()
+			var reject bool
+			var retry bool
+			var err error
 			defer func() {
-				if err := recover(); err != nil {
-					// TODO 集成log
-					log.Printf("%s", err)
+				if r := recover(); r != nil {
+					err := panicErr.NewPanicError(r)
+					cli.opts.logger.Error(ctx, "rabbitMQConsumeRecover", logger.Reflect("error", err))
+					return
 				}
 			}()
 
-			retry, err := consumer(context.TODO(), d.Body)
-			if err != nil {
-				// TODO 集成log
-				log.Println(err)
+			reject, retry, err = p.Consumer(ctx, d.Body)
+			if err != nil && cli.opts.consumeLog {
+				cli.opts.logger.Error(ctx, "rabbitMQHandleConsumerFuncErr",
+					logger.Error(err),
+					logger.Reflect("retry", retry))
 			}
 
-			if !retry {
-				if err = d.Ack(true); err != nil {
-					// TODO 集成log
-					log.Println(err)
+			// If your queue set x-dead-letter-exchange, reject with requeue false can republish to dead letter queue.
+			if reject {
+				if err = d.Reject(false); err != nil {
+					cli.opts.logger.Error(ctx, "rabbitMQConsumeRejectFalseErr", logger.Error(err))
+				}
+				return
+			}
+
+			if retry {
+				// Resend to other consumers.
+				if err = d.Reject(true); err != nil {
+					cli.opts.logger.Error(ctx, "rabbitMQConsumeRejectTrueErr", logger.Error(err))
+				}
+			} else {
+				if err = d.Ack(p.MultipleAck); err != nil {
+					cli.opts.logger.Error(ctx, "rabbitMQConsumeAckErr", logger.Error(err))
 				}
 			}
 		}(d)
-	}
-}
-
-func (q *RabbitMQ) Shutdown() (err error) {
-	if err = q.channel.Cancel(q.name, true); err != nil {
-		return errors.Wrap(err, "channel cancel failed")
-	}
-
-	if err = q.connection.Close(); err != nil {
-		return errors.Wrap(err, "connection close error")
 	}
 
 	return
 }
 
-func (q *RabbitMQ) connect() (err error) {
-	q.connection, err = amqp.Dial(q.url)
+func (cli *Client) Shutdown() (err error) {
+	cli.close <- struct{}{}
+	return cli.connection.Close()
+}
+
+func (cli *Client) newConfirmChannel(ctx context.Context) (
+	channel *amqp.Channel, ack chan uint64, nack chan uint64, err error,
+) {
+	if err = cli.reconnect(); err != nil {
+		return
+	}
+
+	if channel, err = cli.connection.Channel(); err != nil {
+		return
+	}
+
+	if err = channel.Qos(cli.opts.qos, 0, false); err != nil {
+		_ = channel.Close()
+		return
+	}
+
+	if err = channel.Confirm(false); err != nil {
+		return
+	}
+
+	go func() {
+		select {
+		// Connection.Close or Channel.Close
+		case r := <-channel.NotifyClose(make(chan *amqp.Error)):
+			cli.opts.logger.Error(ctx, "rabbitMQChannelNotifyCloseErr",
+				logger.Error(errors.New(r.Error())),
+				logger.Reflect("amqpError", r),
+			)
+		// Basic.Cancel (consume cancel)
+		case r := <-channel.NotifyCancel(make(chan string)):
+			cli.opts.logger.Error(ctx, "rabbitMQChannelNotifyCancelErr", logger.Error(errors.New(r)))
+		// Basic.Return (publish return)
+		case r := <-channel.NotifyReturn(make(chan amqp.Return)):
+			cli.opts.logger.Error(ctx, "rabbitMQChannelNotifyReturnErr", logger.Reflect("return", r))
+		// shutdown over
+		case <-cli.close:
+			return
+		}
+	}()
+
+	ack, nack = channel.NotifyConfirm(make(chan uint64), make(chan uint64))
+
+	return
+}
+
+func (cli *Client) newChannel(ctx context.Context) (channel *amqp.Channel, err error) {
+	if err = cli.reconnect(); err != nil {
+		return
+	}
+	if channel, err = cli.connection.Channel(); err != nil {
+		return
+	}
+
+	if err = channel.Qos(cli.opts.qos, 0, false); err != nil {
+		_ = channel.Close()
+		return
+	}
+
+	go func() {
+		select {
+		// Connection.Close or Channel.Close
+		case r := <-channel.NotifyClose(make(chan *amqp.Error)):
+			cli.opts.logger.Error(ctx, "rabbitMQChannelNotifyCloseErr",
+				logger.Error(errors.New(r.Error())),
+				logger.Reflect("amqpError", r),
+			)
+			_ = cli.reconnect()
+		// Basic.Cancel (consume cancel)
+		case r := <-channel.NotifyCancel(make(chan string)):
+			cli.opts.logger.Error(ctx, "rabbitMQChannelNotifyCancelErr", logger.Error(errors.New(r)))
+		// Basic.Return (publish return)
+		case r := <-channel.NotifyReturn(make(chan amqp.Return)):
+			cli.opts.logger.Error(ctx, "rabbitMQChannelNotifyReturnErr", logger.Reflect("return", r))
+		// shutdown over
+		case <-cli.close:
+			return
+		}
+	}()
+
+	return
+}
+
+func (cli *Client) connect() (err error) {
+	cli.connection, err = amqp.Dial(cli.url)
 	if err != nil {
 		return errors.Wrap(err, "amqp.Dial fail")
 	}
 
-	select {
-	case r := <-q.connection.NotifyClose(make(chan *amqp.Error)):
-		b, _ := json.Marshal(r)
-		// TODO log
-		log.Println("q.connection.NotifyClose:" + string(b))
-	default:
-	}
+	go func() {
+		select {
+		case r := <-cli.connection.NotifyClose(make(chan *amqp.Error)):
+			cli.opts.logger.Error(context.Background(), "rabbitMQConnectionNotifyCloseErr",
+				logger.Error(errors.New(r.Error())),
+				logger.Reflect("amqpError", r))
 
-	q.channel, err = q.connection.Channel()
-	if err != nil {
-		return errors.Wrap(err, "connection.Channel fail")
-	}
-
-	if err = q.channel.Qos(q.opts.qos, 0, false); err != nil {
-		return errors.Wrap(err, "channel.Qos fail")
-	}
-
-	select {
-	case r := <-q.channel.NotifyClose(make(chan *amqp.Error)):
-		b, _ := json.Marshal(r)
-		// TODO log
-		log.Println("q.channel.NotifyClose:" + string(b))
-	case r := <-q.channel.NotifyCancel(make(chan string)):
-		// TODO log
-		log.Println("q.channel.NotifyCancel:" + r)
-	case r := <-q.channel.NotifyReturn(make(chan amqp.Return)):
-		b, _ := json.Marshal(r)
-		// TODO log
-		log.Println("q.channel.NotifyReturn:" + string(b))
-	default:
-	}
-
-	if q.opts.declareExchange {
-		if err = q.channel.ExchangeDeclare(q.exchangeName, q.exchangeType, true, false, false, false, nil); err != nil {
-			return errors.Wrap(err, "channel.ExchangeDeclare fail")
+			_ = cli.reconnect()
+		// shutdown over
+		case <-cli.close:
+			return
 		}
+	}()
+
+	return
+}
+
+// TODO Implement connection pool.
+// Connection and channel are one-to-many.
+// Support to control the number of connections.
+// Support to control the number of channels in per pool.
+// Note: discriminate channel confirm
+func (cli *Client) reconnect() (err error) {
+	if !cli.connection.IsClosed() {
+		return
 	}
 
-	if q.opts.declareQueue {
-		if _, err = q.channel.QueueDeclare(
-			q.queueName, // routing_key
-			true,        // durable
-			false,       // delete when unused
-			false,       // exclusive
-			false,       // no-wait
-			nil,         // arguments
-		); err != nil {
-			return errors.Wrap(err, "channel.QueueDeclare fail")
-		}
-	}
-
-	if q.opts.bindQueue {
-		if err = q.channel.QueueBind(q.queueName, q.routeName, q.exchangeName, false, nil); err != nil {
-			return errors.Wrap(err, "channel.QueueBind fail")
-		}
+	if cli.connection, err = amqp.Dial(cli.url); err != nil {
+		cli.opts.logger.Error(context.Background(), "rabbitMQReconnectErr", logger.Error(err))
+		return
 	}
 
 	return

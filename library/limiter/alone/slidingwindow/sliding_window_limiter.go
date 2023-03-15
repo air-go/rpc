@@ -23,7 +23,7 @@ func (e *slidingWindowEntry) Finish() {}
 func (e *slidingWindowEntry) Error() error { return nil }
 
 type slidingWindowLimiter struct {
-	limiters sync.Map // key resource name,value *rate.limiter
+	limiters sync.Map
 }
 
 var _ limiter.Limiter = (*slidingWindowLimiter)(nil)
@@ -45,6 +45,8 @@ func (l *slidingWindowLimiter) SetLimit(ctx context.Context, r limiter.Resource)
 func (l *slidingWindowLimiter) SetBurst(ctx context.Context, r limiter.Resource) {
 	l.getLimiter(r).SetWindow(l.burst2Window(r.Burst))
 }
+
+func (l *slidingWindowLimiter) SetWindow(ctx context.Context, r limiter.Resource) {}
 
 func (l *slidingWindowLimiter) getLimiter(r limiter.Resource) (lim SlidingWindow) {
 	val, ok := l.limiters.Load(r.Name)

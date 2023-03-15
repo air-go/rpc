@@ -1,28 +1,28 @@
-// Reference uber ratelimit, the different is support no wait take func
 package leakybucket
 
 import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/benbjohnson/clock"
 	"github.com/go-redis/redis/v8"
+	"github.com/why444216978/go-util/assert"
 )
 
-//go:generate go run -mod=mod github.com/golang/mock/mockgen -package leakybucket -destination=./leaky_bucket_mock.go  -source=leaky_bucket.go -build_flags=-mod=mod
 type LeakyBucket interface {
 	Allow(ctx context.Context, key string, requestCount int) (bool, error)
-	SetLimit(rate int)
-	SetBurst(burst int)
+	SetRate(rate int)
+	SetVolume(burst int)
 }
 
 var script = `local key           = KEYS[1] --键名，格式hash
-local volumn        = tonumber(KEYS[2]) --桶容量
+local volume        = tonumber(KEYS[2]) --桶容量
 local rate          = tonumber(KEYS[3]) --桶流出速率
 local request_count = tonumber(KEYS[4]) --请求的增长数
 local current_time  = tonumber(KEYS[5]) --当前时间戳
-local ttl = math.floor((volumn/rate)*2) --有效期
+local ttl = math.floor((volume/rate)*2) --有效期
 
 --容量小于流出速率, 只需要拦住1s的请求即可
 if ttl < 1 then
@@ -44,13 +44,13 @@ if remain_count <= 0 then
     remain_count = 0 
 end
  
-redis.call('hset', key, 'volumn', volumn)
+redis.call('hset', key, 'volume', volume)
 redis.call('hset', key, 'rate', rate)
 redis.call('hset', key, 'last_time', current_time)
 redis.call("expire", key, ttl)
  
-if remain_count > volumn then
-    redis.call('hset', key, 'count', volumn)
+if remain_count > volume then
+    redis.call('hset', key, 'count', volume)
     return 0
 end
  
@@ -69,15 +69,13 @@ func WithClock(clock clock.Clock) Option {
 }
 
 func defaultOption() *option {
-	return &option{
-		clock: clock.New(),
-	}
+	return &option{}
 }
 
 type leakyBucket struct {
 	opts   *option
-	mu     sync.Mutex
-	volumn int
+	mu     sync.RWMutex
+	volume int
 	rate   int
 	client *redis.Client
 }
@@ -88,22 +86,21 @@ func NewLeakyBucket(rate, volume int, client *redis.Client, opts ...Option) Leak
 		o(opt)
 	}
 
-	l := &leakyBucket{
+	return &leakyBucket{
 		opts:   opt,
 		client: client,
+		rate:   rate,
+		volume: volume,
 	}
-
-	l.SetLimit(rate)
-	l.SetBurst(volume)
-
-	return l
 }
 
 func (lb *leakyBucket) Allow(ctx context.Context, key string, requestCount int) (ok bool, err error) {
-	lb.mu.Lock()
-	defer lb.mu.Unlock()
+	lb.mu.RLock()
+	rate := lb.rate
+	volume := lb.volume
+	lb.mu.RUnlock()
 
-	res, err := lb.client.Do(ctx, "EVAL", script, 5, key, lb.volumn, lb.rate, requestCount, lb.opts.clock.Now().Unix()).Result()
+	res, err := lb.client.Do(ctx, "EVAL", script, 5, key, volume, rate, requestCount, lb.now().Unix()).Result()
 	if err != nil {
 		return
 	}
@@ -115,14 +112,21 @@ func (lb *leakyBucket) Allow(ctx context.Context, key string, requestCount int) 
 	return
 }
 
-func (lb *leakyBucket) SetLimit(rate int) {
+func (lb *leakyBucket) SetRate(rate int) {
 	lb.mu.Lock()
 	lb.rate = rate
 	lb.mu.Unlock()
 }
 
-func (lb *leakyBucket) SetBurst(burst int) {
+func (lb *leakyBucket) SetVolume(burst int) {
 	lb.mu.Lock()
-	lb.volumn = burst
+	lb.volume = burst
 	lb.mu.Unlock()
+}
+
+func (sl *leakyBucket) now() time.Time {
+	if assert.IsNil(sl.opts.clock) {
+		return time.Now()
+	}
+	return sl.opts.clock.Now()
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
 	"github.com/why444216978/go-util/assert"
+	panicErr "github.com/why444216978/go-util/panic"
 	"github.com/why444216978/go-util/snowflake"
 	"github.com/why444216978/go-util/sys"
 
@@ -156,7 +157,8 @@ func (c *Cron) handle(ctx context.Context, cmd cron.Job, funcName, spec, ip, loc
 		start := time.Now()
 		func() {
 			defer func() {
-				if err := recover(); err != nil {
+				if r := recover(); r != nil {
+					err := panicErr.NewPanicError(r)
 					c.logger.Error(ctx, "crontab handler panic",
 						logger.Reflect("panic", err),
 						logger.Reflect("spec", spec),

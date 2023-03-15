@@ -22,7 +22,7 @@ func (e *leakyBucketEntry) Finish() {}
 func (e *leakyBucketEntry) Error() error { return nil }
 
 type leakyBucketLimiter struct {
-	limiters sync.Map // key resource name,value *rate.limiter
+	limiters sync.Map
 }
 
 var _ limiter.Limiter = (*leakyBucketLimiter)(nil)
@@ -38,12 +38,14 @@ func (l *leakyBucketLimiter) Check(ctx context.Context, r limiter.Resource) limi
 }
 
 func (l *leakyBucketLimiter) SetLimit(ctx context.Context, r limiter.Resource) {
-	l.getLimiter(r).SetLimit(r.Limit)
+	l.getLimiter(r).SetRate(r.Limit)
 }
 
 func (l *leakyBucketLimiter) SetBurst(ctx context.Context, r limiter.Resource) {
-	l.getLimiter(r).SetBurst(r.Burst)
+	l.getLimiter(r).SetVolume(r.Burst)
 }
+
+func (l *leakyBucketLimiter) SetWindow(ctx context.Context, r limiter.Resource) {}
 
 func (l *leakyBucketLimiter) getLimiter(r limiter.Resource) (lim LeakyBucket) {
 	val, ok := l.limiters.Load(r.Name)

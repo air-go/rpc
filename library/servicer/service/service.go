@@ -62,7 +62,7 @@ func NewService(config *Config, opts ...Option) (*Service, error) {
 		o(s)
 	}
 
-	if err := validate.ValidateCamel(config); err != nil {
+	if err := validate.Validate(config); err != nil {
 		return nil, err
 	}
 
