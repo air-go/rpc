@@ -6,9 +6,9 @@ import (
 
 	"github.com/benbjohnson/clock"
 	"github.com/emirpasic/gods/queues/arrayqueue"
+	"github.com/why444216978/go-util/assert"
 )
 
-//go:generate go run -mod=mod github.com/golang/mock/mockgen -package slidingwindow -destination=./sliding_window_mock.go  -source=sliding_window.go -build_flags=-mod=mod
 type SlidingWindow interface {
 	Allow() bool
 	SetLimit(rate int)
@@ -30,20 +30,18 @@ func WithClock(clock clock.Clock) Option {
 }
 
 func defaultOption() *option {
-	return &option{
-		clock: clock.New(),
-	}
+	return &option{}
 }
 
 type slidingWindow struct {
-	mu     sync.Mutex
+	mu     sync.RWMutex
 	opts   *option
 	window time.Duration
-	count  int
+	limit  int
 	q      *arrayqueue.Queue
 }
 
-func NewSlidingWindow(count int, window time.Duration, opts ...Option) *slidingWindow {
+func NewSlidingWindow(limit int, window time.Duration, opts ...Option) *slidingWindow {
 	opt := defaultOption()
 	for _, o := range opts {
 		o(opt)
@@ -52,19 +50,21 @@ func NewSlidingWindow(count int, window time.Duration, opts ...Option) *slidingW
 	return &slidingWindow{
 		opts:   opt,
 		window: window,
-		count:  count,
+		limit:  limit,
 		q:      arrayqueue.New(),
 	}
 }
 
 func (sw *slidingWindow) Allow() bool {
-	sw.mu.Lock()
-	defer sw.mu.Unlock()
+	sw.mu.RLock()
+	limit := sw.limit
+	window := sw.window
+	sw.mu.RUnlock()
 
-	now := sw.opts.clock.Now()
+	now := sw.now()
 
 	// not full, access allowed
-	if sw.q.Size() < sw.count {
+	if sw.q.Size() < limit {
 		sw.q.Enqueue(&node{t: now})
 		return true
 	}
@@ -74,7 +74,7 @@ func (sw *slidingWindow) Allow() bool {
 	first := early.(*node)
 
 	// the first request is still in the time window, access denied
-	if now.Add(-sw.window).Before(first.t) {
+	if now.Add(-window).Before(first.t) {
 		return false
 	}
 
@@ -85,9 +85,9 @@ func (sw *slidingWindow) Allow() bool {
 	return true
 }
 
-func (t *slidingWindow) SetLimit(count int) {
+func (t *slidingWindow) SetLimit(limit int) {
 	t.mu.Lock()
-	t.count = count
+	t.limit = limit
 	t.mu.Unlock()
 }
 
@@ -95,4 +95,11 @@ func (t *slidingWindow) SetWindow(window time.Duration) {
 	t.mu.Lock()
 	t.window = window
 	t.mu.Unlock()
+}
+
+func (sl *slidingWindow) now() time.Time {
+	if assert.IsNil(sl.opts.clock) {
+		return time.Now()
+	}
+	return sl.opts.clock.Now()
 }

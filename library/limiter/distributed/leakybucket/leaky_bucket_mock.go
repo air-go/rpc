@@ -49,26 +49,26 @@ func (mr *MockLeakyBucketMockRecorder) Allow(ctx, key, requestCount interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Allow", reflect.TypeOf((*MockLeakyBucket)(nil).Allow), ctx, key, requestCount)
 }
 
-// SetBurst mocks base method.
-func (m *MockLeakyBucket) SetBurst(burst int) {
+// SetRate mocks base method.
+func (m *MockLeakyBucket) SetRate(rate int) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetBurst", burst)
+	m.ctrl.Call(m, "SetRate", rate)
 }
 
-// SetBurst indicates an expected call of SetBurst.
-func (mr *MockLeakyBucketMockRecorder) SetBurst(burst interface{}) *gomock.Call {
+// SetRate indicates an expected call of SetRate.
+func (mr *MockLeakyBucketMockRecorder) SetRate(rate interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBurst", reflect.TypeOf((*MockLeakyBucket)(nil).SetBurst), burst)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRate", reflect.TypeOf((*MockLeakyBucket)(nil).SetRate), rate)
 }
 
-// SetLimit mocks base method.
-func (m *MockLeakyBucket) SetLimit(rate int) {
+// SetVolume mocks base method.
+func (m *MockLeakyBucket) SetVolume(burst int) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetLimit", rate)
+	m.ctrl.Call(m, "SetVolume", burst)
 }
 
-// SetLimit indicates an expected call of SetLimit.
-func (mr *MockLeakyBucketMockRecorder) SetLimit(rate interface{}) *gomock.Call {
+// SetVolume indicates an expected call of SetVolume.
+func (mr *MockLeakyBucketMockRecorder) SetVolume(burst interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLimit", reflect.TypeOf((*MockLeakyBucket)(nil).SetLimit), rate)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetVolume", reflect.TypeOf((*MockLeakyBucket)(nil).SetVolume), burst)
 }

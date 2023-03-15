@@ -47,6 +47,8 @@ func (l *tokenBucketLimiter) SetBurst(ctx context.Context, r limiter.Resource) {
 	l.getLimiter(r).SetBurst(r.Burst)
 }
 
+func (l *tokenBucketLimiter) SetWindow(ctx context.Context, r limiter.Resource) {}
+
 func (l *tokenBucketLimiter) getLimiter(r limiter.Resource) (lim *rate.Limiter) {
 	val, ok := l.limiters.Load(r.Name)
 	if !ok {

@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/benbjohnson/clock"
+	"github.com/why444216978/go-util/assert"
 )
 
-//go:generate go run -mod=mod github.com/golang/mock/mockgen -package leakybucket -destination=./leaky_bucket_mock.go  -source=leaky_bucket.go -build_flags=-mod=mod
 type LeakyBucket interface {
 	Allow() bool
-	SetLimit(rate int)
-	SetBurst(burst int)
+	SetRate(rate int)
+	SetVolume(volume int)
 }
 
 type option struct {
@@ -34,14 +34,13 @@ func WithClock(clock clock.Clock) Option {
 
 func defaultOption() *option {
 	return &option{
-		per:   time.Second,
-		clock: clock.New(),
+		per: time.Second,
 	}
 }
 
 type leakyBucket struct {
 	opts            *option
-	mu              sync.Mutex
+	mu              sync.RWMutex
 	last            time.Time
 	volume          int
 	current         int
@@ -56,34 +55,34 @@ func NewLeakyBucket(rate, volume int, opts ...Option) LeakyBucket {
 
 	l := &leakyBucket{
 		opts:   opt,
-		last:   time.Now(),
 		volume: volume,
 	}
 
-	l.SetLimit(rate)
-	l.SetBurst(volume)
+	l.SetRate(rate)
 
 	return l
 }
 
 func (lb *leakyBucket) Allow() bool {
-	lb.mu.Lock()
-	defer lb.mu.Unlock()
+	lb.mu.RLock()
+	requestInterval := lb.requestInterval
+	volume := lb.volume
+	lb.mu.RUnlock()
 
-	now := lb.opts.clock.Now()
+	now := lb.now()
 	defer func() {
 		lb.last = now
 	}()
 
 	// constant rate outflow
-	c := int(now.Sub(lb.last) / lb.requestInterval)
+	c := int(now.Sub(lb.last) / requestInterval)
 	lb.current -= c
 	if lb.current < 0 {
 		lb.current = 0
 	}
 
 	// bucket full overflow, access denied
-	if lb.current >= lb.volume {
+	if lb.current >= volume {
 		return false
 	}
 
@@ -93,15 +92,22 @@ func (lb *leakyBucket) Allow() bool {
 	return true
 }
 
-func (lb *leakyBucket) SetLimit(rate int) {
+func (lb *leakyBucket) SetRate(rate int) {
 	lb.mu.Lock()
 	requestInterval := lb.opts.per / time.Duration(rate)
 	lb.requestInterval = requestInterval
 	lb.mu.Unlock()
 }
 
-func (lb *leakyBucket) SetBurst(burst int) {
+func (lb *leakyBucket) SetVolume(volume int) {
 	lb.mu.Lock()
-	lb.volume = burst
+	lb.volume = volume
 	lb.mu.Unlock()
+}
+
+func (sl *leakyBucket) now() time.Time {
+	if assert.IsNil(sl.opts.clock) {
+		return time.Now()
+	}
+	return sl.opts.clock.Now()
 }

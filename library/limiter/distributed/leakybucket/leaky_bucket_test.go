@@ -1,4 +1,3 @@
-// Reference uber ratelimit, the different is support no wait take func
 package leakybucket
 
 import (
@@ -26,7 +25,7 @@ func TestLeakyBucket(t *testing.T) {
 	ok, err := lb.Allow(ctx, key, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, true, ok)
-	res, err := rc.HGet(ctx, key, "volumn").Result()
+	res, err := rc.HGet(ctx, key, "volume").Result()
 	assert.Nil(t, err)
 	assert.Equal(t, "3000", res)
 	res, err = rc.HGet(ctx, key, "rate").Result()
@@ -44,7 +43,7 @@ func TestLeakyBucket(t *testing.T) {
 	ok, err = lb.Allow(ctx, key, 100)
 	assert.Nil(t, err)
 	assert.Equal(t, true, ok)
-	res, err = rc.HGet(ctx, key, "volumn").Result()
+	res, err = rc.HGet(ctx, key, "volume").Result()
 	assert.Nil(t, err)
 	assert.Equal(t, "3000", res)
 	res, err = rc.HGet(ctx, key, "rate").Result()
@@ -62,7 +61,7 @@ func TestLeakyBucket(t *testing.T) {
 	ok, err = lb.Allow(ctx, key, 3000)
 	assert.Nil(t, err)
 	assert.Equal(t, false, ok)
-	res, err = rc.HGet(ctx, key, "volumn").Result()
+	res, err = rc.HGet(ctx, key, "volume").Result()
 	assert.Nil(t, err)
 	assert.Equal(t, "3000", res)
 	res, err = rc.HGet(ctx, key, "rate").Result()
@@ -75,11 +74,11 @@ func TestLeakyBucket(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, strconv.FormatInt(third.Unix(), 10), res)
 
-	lb.SetBurst(3001)
+	lb.SetVolume(3001)
 	ok, err = lb.Allow(ctx, key, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, true, ok)
-	res, err = rc.HGet(ctx, key, "volumn").Result()
+	res, err = rc.HGet(ctx, key, "volume").Result()
 	assert.Nil(t, err)
 	assert.Equal(t, "3001", res)
 	res, err = rc.HGet(ctx, key, "rate").Result()
@@ -92,13 +91,13 @@ func TestLeakyBucket(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, strconv.FormatInt(third.Unix(), 10), res)
 
-	lb.SetLimit(10000)
+	lb.SetRate(10000)
 	forth := third.Add(time.Second * 1)
 	c.Set(forth)
 	ok, err = lb.Allow(ctx, key, 500)
 	assert.Nil(t, err)
 	assert.Equal(t, true, ok)
-	res, err = rc.HGet(ctx, key, "volumn").Result()
+	res, err = rc.HGet(ctx, key, "volume").Result()
 	assert.Nil(t, err)
 	assert.Equal(t, "3001", res)
 	res, err = rc.HGet(ctx, key, "rate").Result()
