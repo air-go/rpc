@@ -3,7 +3,9 @@ package http
 import (
 	"strconv"
 
+	"github.com/air-go/rpc/library/app"
 	"github.com/gin-gonic/gin"
+	"github.com/why444216978/go-util/sys"
 )
 
 type Label struct {
@@ -21,9 +23,28 @@ func (l *Label) Value(c *gin.Context) string {
 
 var DefaultLabels = []Label{
 	{
+		Label: "service_name",
+		GetValue: func(ctx *gin.Context) string {
+			return app.Name()
+		},
+	},
+	{
+		Label: "node",
+		GetValue: func(ctx *gin.Context) string {
+			ip, _ := sys.LocalIP()
+			return ip
+		},
+	},
+	{
 		Label: "method",
 		GetValue: func(c *gin.Context) string {
-			return c.FullPath()
+			return c.Request.Method
+		},
+	},
+	{
+		Label: "api",
+		GetValue: func(c *gin.Context) string {
+			return c.Request.URL.Path
 		},
 	},
 	{

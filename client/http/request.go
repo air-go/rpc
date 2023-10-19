@@ -9,8 +9,6 @@ import (
 	"net/url"
 
 	"github.com/why444216978/codec"
-	"github.com/why444216978/codec/form"
-	"github.com/why444216978/codec/json"
 )
 
 type Request interface {
@@ -75,24 +73,6 @@ func (r *DefaultRequest) GetBody() interface{} {
 
 func (r *DefaultRequest) GetCodec() codec.Codec {
 	return r.Codec
-}
-
-func NewJSONRequest(r *DefaultRequest) {
-	if r.Header == nil {
-		r.Header = http.Header{}
-	}
-	r.Header.Set("Content-Type", "application/json")
-
-	r.Codec = json.JSONCodec{}
-}
-
-func NewFormRequest(r *DefaultRequest) {
-	if r.Header == nil {
-		r.Header = http.Header{}
-	}
-	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	r.Codec = form.FormCodec{}
 }
 
 type MultiFormFile struct {

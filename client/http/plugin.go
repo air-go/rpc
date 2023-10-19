@@ -30,11 +30,11 @@ func (*OpentracingBeforePlugin) Handle(ctx context.Context, req *http.Request) (
 	return ctx, jaeger.InjectHTTP(ctx, req, logID)
 }
 
-type OpentelemetryOpentracingBeforePlugin struct{}
+type OpentelemetryBeforePlugin struct{}
 
-var _ BeforeRequestPlugin = (*OpentelemetryOpentracingBeforePlugin)(nil)
+var _ BeforeRequestPlugin = (*OpentelemetryBeforePlugin)(nil)
 
-func (*OpentelemetryOpentracingBeforePlugin) Handle(ctx context.Context, req *http.Request) (context.Context, error) {
+func (*OpentelemetryBeforePlugin) Handle(ctx context.Context, req *http.Request) (context.Context, error) {
 	if !libraryOtel.CheckHasTraceID(ctx) {
 		return ctx, nil
 	}

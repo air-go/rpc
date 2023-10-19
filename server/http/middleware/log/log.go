@@ -47,7 +47,8 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 			logger.Reflect(logger.ClientPort, 0),
 			logger.Reflect(logger.ServerIP, serverIP),
 			logger.Reflect(logger.ServerPort, app.Port()),
-			logger.Reflect(logger.API, c.Request.RequestURI),
+			logger.Reflect(logger.API, c.Request.URL.Path),
+			logger.Reflect(logger.URI, c.Request.RequestURI),
 		}
 		// Next之前这里需要写入ctx，否则会丢失log、断开trace
 		ctx = logger.WithFields(ctx, fields)
