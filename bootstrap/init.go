@@ -1,15 +1,14 @@
 package bootstrap
 
 import (
-	"log"
-	"syscall"
+	"fmt"
 
 	"github.com/air-go/rpc/library/app"
 	"github.com/air-go/rpc/library/config"
 )
 
 func Init(confPath string, load func() error) (err error) {
-	log.Printf("Actual pid is %d", syscall.Getpid())
+	fmt.Println(welcome())
 
 	config.Init(confPath)
 
