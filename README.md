@@ -125,7 +125,6 @@ QQ群：909211071
   - server
     - grpc //grpc服务端
     - http //http服务端  
-  - library //基础组件库，不建议修改
   - third //三方依赖引入
   .gitignore
   Dockerfile

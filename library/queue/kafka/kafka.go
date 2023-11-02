@@ -177,7 +177,11 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 	for {
 		select {
 		case msg := <-claim.Messages():
-			go func(msg *sarama.ConsumerMessage) {
+			// NOTE:
+			// Do not move the code below to a goroutine.
+			// The `ConsumeClaim` itself is called within a goroutine, see:
+			// https://github.com/Shopify/sarama/blob/main/consumer_group.go#L29-L31
+			func() {
 				ctx := context.Background()
 				var retry bool
 				var err error
@@ -191,7 +195,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 						c.opts.logger.Error(ctx, "kafkaConsumeErr", logger.Error(err))
 					}
 				}()
-				_, retry, err = c.consumer(ctx, msg.Value)
+				_, retry, err = c.consumer(ctx, msg)
 				if err != nil && c.opts.consumeLog {
 					c.opts.logger.Error(ctx, "kafkaConsumeRejectErr",
 						logger.Error(err),
@@ -203,7 +207,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 				}
 
 				session.MarkMessage(msg, "")
-			}(msg)
+			}()
 		// Must: https://github.com/Shopify/sarama/issues/1192
 		case <-session.Context().Done():
 			return session.Context().Err()

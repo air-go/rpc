@@ -70,8 +70,8 @@ func TestProduce(t *testing.T) {
 			ctx:     ctx,
 			GroupID: group,
 			Topics:  []string{topic},
-			Consumer: func(ctx context.Context, b []byte) (reject, retry bool, err error) {
-				fmt.Println(string(b))
+			Consumer: func(ctx context.Context, msg interface{}) (reject, retry bool, err error) {
+				fmt.Println(msg)
 				return
 			},
 		})

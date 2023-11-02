@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-type Consumer func(context.Context, []byte) (reject, retry bool, err error)
+type Consumer func(context.Context, interface{}) (reject, retry bool, err error)
 
 type ProduceResponse struct {
 	Partition int32
