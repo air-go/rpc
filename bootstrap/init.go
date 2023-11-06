@@ -1,14 +1,13 @@
 package bootstrap
 
 import (
-	"fmt"
-
 	"github.com/air-go/rpc/library/app"
 	"github.com/air-go/rpc/library/config"
 )
 
 func Init(confPath string, load func() error) (err error) {
-	fmt.Println(welcome())
+	welcome()
+	pidPrint()
 
 	config.Init(confPath)
 

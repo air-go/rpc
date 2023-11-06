@@ -13,8 +13,8 @@ import (
 	"github.com/why444216978/go-util/assert"
 	panicErr "github.com/why444216978/go-util/panic"
 	"github.com/why444216978/go-util/snowflake"
-	"github.com/why444216978/go-util/sys"
 
+	"github.com/air-go/rpc/library/app"
 	"github.com/air-go/rpc/library/lock"
 	"github.com/air-go/rpc/library/logger"
 )
@@ -115,20 +115,20 @@ func (c *Cron) Name() string {
 }
 
 func (c *Cron) addJob(spec string, cmd cron.Job) (cron.EntryID, error) {
-	ctx := context.TODO()
-	ip, _ := sys.LocalIP()
 	funcName := cmd.(FuncJob).FunctionName()
 	lockKey := c.getLockKey(funcName)
 
-	entityID, err := c.AddFunc(spec, c.handle(ctx, cmd, funcName, spec, ip, lockKey))
+	entityID, err := c.AddFunc(spec, c.handle(cmd, funcName, spec, lockKey))
 	c.setFuncEntity(funcName, entityID)
 
 	return entityID, err
 }
 
-func (c *Cron) handle(ctx context.Context, cmd cron.Job, funcName, spec, ip, lockKey string) func() {
+func (c *Cron) handle(cmd cron.Job, funcName, spec, lockKey string) func() {
 	return func() {
 		var err error
+
+		ctx := logger.InitFieldsContainer(context.Background())
 
 		schedule := c.getFuncEntity(funcName).Schedule
 		ttl := c.getLockDuration(schedule)
@@ -139,7 +139,7 @@ func (c *Cron) handle(ctx context.Context, cmd cron.Job, funcName, spec, ip, loc
 			if err != nil {
 				c.logger.Error(ctx, errors.Wrap(err, "crontab fun Lock err").Error(),
 					logger.Reflect("spec", spec),
-					logger.Reflect(logger.ClientIP, ip),
+					logger.Reflect(logger.ClientIP, app.LocalIP()),
 					logger.Reflect(logger.API, c.name),
 					logger.Reflect(logger.Method, funcName))
 				return
@@ -147,7 +147,7 @@ func (c *Cron) handle(ctx context.Context, cmd cron.Job, funcName, spec, ip, loc
 			if !ok {
 				c.logger.Error(ctx, "crontab fun Lock !ok",
 					logger.Reflect("spec", spec),
-					logger.Reflect(logger.ClientIP, ip),
+					logger.Reflect(logger.ClientIP, app.LocalIP()),
 					logger.Reflect(logger.API, c.name),
 					logger.Reflect(logger.Method, funcName))
 				return
@@ -162,7 +162,7 @@ func (c *Cron) handle(ctx context.Context, cmd cron.Job, funcName, spec, ip, loc
 					c.logger.Error(ctx, "crontab handler panic",
 						logger.Reflect("panic", err),
 						logger.Reflect("spec", spec),
-						logger.Reflect(logger.ClientIP, ip),
+						logger.Reflect(logger.ClientIP, app.LocalIP()),
 						logger.Reflect(logger.API, c.name),
 						logger.Reflect(logger.Method, funcName))
 				}
@@ -173,7 +173,7 @@ func (c *Cron) handle(ctx context.Context, cmd cron.Job, funcName, spec, ip, loc
 		c.logger.Info(ctx, "handle "+c.name,
 			logger.Reflect("spec", spec),
 			logger.Reflect(logger.Cost, time.Since(start).Milliseconds()),
-			logger.Reflect(logger.ClientIP, ip),
+			logger.Reflect(logger.ClientIP, app.LocalIP()),
 			logger.Reflect(logger.API, c.name),
 			logger.Reflect(logger.Method, funcName))
 
@@ -181,7 +181,7 @@ func (c *Cron) handle(ctx context.Context, cmd cron.Job, funcName, spec, ip, loc
 			if err = c.lock.Unlock(ctx, lockKey, random); err != nil {
 				c.logger.Error(ctx, errors.Wrap(err, "crontab fun Unlock err").Error(),
 					logger.Reflect("spec", spec),
-					logger.Reflect(logger.ClientIP, ip),
+					logger.Reflect(logger.ClientIP, app.LocalIP()),
 					logger.Reflect(logger.API, c.name),
 					logger.Reflect(logger.Method, funcName))
 				return

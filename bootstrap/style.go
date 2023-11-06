@@ -53,12 +53,22 @@ var (
 			BorderRight(true).
 			BorderBottom(true)
 
-	pidStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF1493"))
+	sysStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF1493"))
 
 	docStyle = lipgloss.NewStyle().Padding(1, 1, 0, 1)
 )
 
-func welcome() string {
+func sysPrint(s string) {
+	doc := strings.Builder{}
+	doc.WriteString(sysStyle.Render(s))
+	fmt.Println(doc.String())
+}
+
+func pidPrint() {
+	sysPrint(fmt.Sprintf("%s Actual pid is %d\n", time.Now().Format("2006-01-02 15:04:05"), syscall.Getpid()))
+}
+
+func welcome() {
 	doc := strings.Builder{}
 
 	// title
@@ -101,12 +111,7 @@ func welcome() string {
 		doc.WriteString(dialog + "\n")
 	}
 
-	{
-		pid := fmt.Sprintf("%s Actual pid is %d\n", time.Now().Format("2006-01-02 15:04:05"), syscall.Getpid())
-		doc.WriteString(pidStyle.Render(pid))
-	}
-
-	return docStyle.Render(doc.String())
+	fmt.Println(docStyle.Render(doc.String()))
 }
 
 func colorGrid(xSteps, ySteps int) [][]string {

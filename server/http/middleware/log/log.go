@@ -21,7 +21,7 @@ import (
 
 func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctx := c.Request.Context()
+		ctx := logger.InitFieldsContainer(c.Request.Context())
 
 		start := time.Now()
 
@@ -36,7 +36,8 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 		responseWriter := &util.BodyWriter{Body: bytes.NewBuffer(nil), ResponseWriter: c.Writer}
 		c.Writer = responseWriter
 
-		fields := []logger.Field{
+		// Next之前这里需要写入ctx，否则会丢失log、断开trace
+		logger.AddField(ctx,
 			logger.Reflect(logger.LogID, logID),
 			logger.Reflect(logger.TraceID, logger.ValueTraceID(ctx)),
 			logger.Reflect(logger.Header, c.Request.Header),
@@ -48,10 +49,7 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 			logger.Reflect(logger.ServerIP, serverIP),
 			logger.Reflect(logger.ServerPort, app.Port()),
 			logger.Reflect(logger.API, c.Request.URL.Path),
-			logger.Reflect(logger.URI, c.Request.RequestURI),
-		}
-		// Next之前这里需要写入ctx，否则会丢失log、断开trace
-		ctx = logger.WithFields(ctx, fields)
+			logger.Reflect(logger.URI, c.Request.RequestURI))
 		c.Request = c.Request.WithContext(ctx)
 
 		var doneFlag int32
@@ -66,13 +64,12 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 			if responseWriter.Body.Len() > 0 {
 				logResponse := map[string]interface{}{}
 				_ = json.Unmarshal(resp, &logResponse)
-				ctx = logger.AddField(ctx, logger.Reflect(logger.Response, logResponse))
+				logger.AddField(ctx, logger.Reflect(logger.Response, logResponse))
 			}
 
-			ctx = logger.AddField(ctx,
+			logger.AddField(ctx,
 				logger.Reflect(logger.Code, c.Writer.Status()),
-				logger.Reflect(logger.Cost, time.Since(start).Milliseconds()),
-			)
+				logger.Reflect(logger.Cost, time.Since(start).Milliseconds()))
 
 			c.Request = c.Request.WithContext(ctx)
 
@@ -94,7 +91,7 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 					code = http.StatusGatewayTimeout
 				}
 
-				ctx = logger.AddField(ctx,
+				logger.AddField(ctx,
 					logger.Reflect(logger.Code, code),
 					logger.Reflect(logger.Cost, time.Since(start).Milliseconds()),
 				)

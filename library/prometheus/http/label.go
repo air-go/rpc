@@ -5,7 +5,6 @@ import (
 
 	"github.com/air-go/rpc/library/app"
 	"github.com/gin-gonic/gin"
-	"github.com/why444216978/go-util/sys"
 )
 
 type Label struct {
@@ -31,8 +30,7 @@ var DefaultLabels = []Label{
 	{
 		Label: "node",
 		GetValue: func(ctx *gin.Context) string {
-			ip, _ := sys.LocalIP()
-			return ip
+			return app.LocalIP()
 		},
 	},
 	{

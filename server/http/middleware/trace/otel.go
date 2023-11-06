@@ -23,7 +23,8 @@ import (
 // The code after next takes effect in the reverse order
 func OpentelemetryMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctx := c.Request.Context()
+		ctx := logger.InitFieldsContainer(c.Request.Context())
+
 		ctx = libraryOtel.ExtractHTTPBaggage(ctx, c.Request.Header)
 		opts := []trace.SpanStartOption{
 			trace.WithAttributes(semconv.NetAttributesFromHTTPRequest("tcp", c.Request)...),
@@ -48,11 +49,12 @@ func OpentelemetryMiddleware() gin.HandlerFunc {
 
 		ctx = c.Request.Context()
 
-		fields := logger.ValueFields(ctx)
-		request := logger.Find(logger.Request, fields)
+		request := logger.FindField(ctx, logger.Request)
 		req, _ := request.Value().(string)
-		response := logger.Find(logger.Response, fields)
+
+		response := logger.FindField(ctx, logger.Response)
 		resp, _ := conversion.JsonEncode(response.Value())
+
 		span.AddEvent("request", trace.WithAttributes([]attribute.KeyValue{
 			libraryOtel.AttributeLogID.String(logger.ValueLogID(ctx)),
 			libraryOtel.AttributeRequest.String(req),

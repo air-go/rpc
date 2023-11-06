@@ -5,5 +5,5 @@ import (
 )
 
 type Client interface {
-	Send(ctx context.Context, request Request, response *Response) (err error)
+	Send(ctx context.Context, request Request, response Response) (err error)
 }

@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 	gormLogger "gorm.io/gorm/logger"
 
+	"github.com/air-go/rpc/library/app"
 	"github.com/air-go/rpc/library/logger"
 	zapLogger "github.com/air-go/rpc/library/logger/zap"
 )
@@ -109,8 +110,6 @@ func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (stri
 		return
 	}
 
-	fields := logger.ValueFields(ctx)
-
 	elapsed := time.Since(begin)
 
 	sql, rows := fc()
@@ -127,8 +126,8 @@ func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (stri
 		zap.String(logger.Request, sql),
 		zap.Int64(logger.Response, rows),
 		zap.String(logger.API, api),
-		zap.Reflect(logger.ClientIP, logger.Find(logger.ServerIP, fields).Value()),
-		zap.Reflect(logger.ClientPort, logger.Find(logger.ServerPort, fields).Value()),
+		zap.Reflect(logger.ClientIP, app.LocalIP()),
+		zap.Reflect(logger.ClientPort, app.Port()),
 	}
 
 	if err != nil && l.LogLevel >= gormLogger.Error && (!l.IgnoreRecordNotFoundError || !errors.Is(err, gorm.ErrRecordNotFound)) {

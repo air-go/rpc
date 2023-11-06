@@ -17,10 +17,9 @@ func PanicMiddleware(l logger.Logger) gin.HandlerFunc {
 			if r := recover(); r != nil {
 				err := panicErr.NewPanicError(r)
 
-				ctx := c.Request.Context()
+				ctx := logger.InitFieldsContainer(c.Request.Context())
 
-				fields := logger.ValueFields(ctx)
-				ctx = logger.AddField(ctx,
+				logger.AddField(ctx,
 					logger.Reflect(logger.Code, http.StatusInternalServerError),
 					logger.Reflect(logger.Response, map[string]interface{}{
 						"code":   http.StatusInternalServerError,
@@ -30,7 +29,6 @@ func PanicMiddleware(l logger.Logger) gin.HandlerFunc {
 					}),
 					// logger.Reflect(logger.Trace, debugStack),
 				)
-				ctx = logger.WithFields(c.Request.Context(), fields)
 				c.Request = c.Request.WithContext(ctx)
 
 				l.Error(ctx, fmt.Sprintf("%s", err)) // 这里不能打Fatal和Panic，否则程序会退出

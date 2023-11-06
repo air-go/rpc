@@ -50,20 +50,3 @@ func TestError(t *testing.T) {
 		})
 	})
 }
-
-func TestFind(t *testing.T) {
-	convey.Convey("TestFind", t, func() {
-		convey.Convey("success", func() {
-			fields := []Field{newFields("key", "value")}
-			f := Find("key", fields)
-			assert.Equal(t, f.Key(), "key")
-			assert.Equal(t, f.Value(), "value")
-		})
-		convey.Convey("not find", func() {
-			fields := []Field{}
-			f := Find("key", fields)
-			assert.Equal(t, f.Key(), "nil")
-			assert.Equal(t, f.Value(), "nil")
-		})
-	})
-}

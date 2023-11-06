@@ -51,12 +51,31 @@ func New(opts ...Option) *RPC {
 	return r
 }
 
-func (r *RPC) Send(ctx context.Context, request client.Request, response *client.Response) (err error) {
+func (r *RPC) Send(ctx context.Context, request client.Request, response client.Response) (err error) {
 	if err = r.beforeCheck(ctx, request, response); err != nil {
 		return
 	}
 
 	serviceName := request.GetServiceName()
+
+	defer func() {
+		if r.logger == nil {
+			return
+		}
+
+		fields := []logger.Field{
+			logger.Reflect(logger.ServiceName, serviceName),
+			logger.Reflect(logger.Header, request.GetHeader()),
+			logger.Reflect(logger.Method, request.GetMethod()),
+			logger.Reflect(logger.API, request.GetPath()),
+			logger.Reflect(logger.Request, request.GetBody()),
+		}
+		if err != nil {
+			r.logger.Error(ctx, err.Error(), fields...)
+			return
+		}
+		r.logger.Info(ctx, "rpc success", fields...)
+	}()
 
 	// get servicer
 	service, ok := servicer.GetServicer(serviceName)
@@ -70,6 +89,9 @@ func (r *RPC) Send(ctx context.Context, request client.Request, response *client
 	if err != nil {
 		return
 	}
+	logger.AddField(ctx,
+		logger.Reflect(logger.ServerIP, node.Host()),
+		logger.Reflect(logger.ServerPort, node.Port()))
 
 	if assert.IsNil(node) {
 		err = errors.New("node nil")
@@ -81,7 +103,9 @@ func (r *RPC) Send(ctx context.Context, request client.Request, response *client
 	if err != nil {
 		return
 	}
-	uri := fmt.Sprintf("%s?%s", uu.Path, uu.RawQuery)
+
+	uri := r.formatURI(ctx, uu)
+	logger.AddField(ctx, logger.Reflect(logger.URI, uri))
 
 	// build http request
 	req, err := r.buildRequest(ctx, request, uu)
@@ -94,35 +118,16 @@ func (r *RPC) Send(ctx context.Context, request client.Request, response *client
 		return
 	}
 
-	ret, err := r.send(ctx, cli, service, node, req, response)
-
-	if r.logger == nil {
+	if err = r.beforeSend(ctx, req); err != nil {
 		return
 	}
 
-	fields := []logger.Field{
-		logger.Reflect(logger.ServiceName, serviceName),
-		logger.Reflect(logger.Header, request.GetHeader()),
-		logger.Reflect(logger.Method, request.GetMethod()),
-		logger.Reflect(logger.API, request.GetPath()),
-		logger.Reflect(logger.URI, uri),
-		logger.Reflect(logger.Request, request.GetBody()),
-		logger.Reflect(logger.Response, response.Body),
-		logger.Reflect(logger.ServerIP, node.Host()),
-		logger.Reflect(logger.ServerPort, node.Port()),
-		logger.Reflect(logger.Code, response.HTTPCode),
-		logger.Reflect(logger.Cost, ret.requestCost+ret.decodeCost),
-	}
-	if err != nil {
-		r.logger.Error(ctx, err.Error(), fields...)
-		return
-	}
-	r.logger.Info(ctx, "rpc success", fields...)
+	_, err = r.send(ctx, cli, service, node, req, response)
 
 	return
 }
 
-func (r *RPC) beforeCheck(ctx context.Context, request client.Request, response *client.Response) error {
+func (r *RPC) beforeCheck(ctx context.Context, request client.Request, response client.Response) error {
 	if assert.IsNil(request) {
 		return errors.New("request is nil")
 	}
@@ -135,11 +140,14 @@ func (r *RPC) beforeCheck(ctx context.Context, request client.Request, response 
 		return errors.New("response is nil")
 	}
 
-	if assert.IsNil(response.Codec) {
-		return errors.New("response codec is nil")
-	}
-
 	return nil
+}
+
+func (r *RPC) formatURI(ctx context.Context, uu *url.URL) string {
+	if uu.RawQuery == "" {
+		return uu.Path
+	}
+	return fmt.Sprintf("%s?%s", uu.Path, uu.RawQuery)
 }
 
 func (r *RPC) buildURL(request client.Request, node servicer.Node) (u *url.URL, err error) {
@@ -190,14 +198,7 @@ func (r *RPC) buildRequest(ctx context.Context, request client.Request, uu *url.
 	return
 }
 
-type sendRet struct {
-	requestCost int64
-	decodeCost  int64
-}
-
-func (r *RPC) send(ctx context.Context, cli *http.Client, service servicer.Servicer, node servicer.Node,
-	req *http.Request, response *client.Response,
-) (ret sendRet, err error) {
+func (r *RPC) beforeSend(ctx context.Context, req *http.Request) (err error) {
 	// check context cancel
 	if err = ctx.Err(); err != nil {
 		return
@@ -208,33 +209,43 @@ func (r *RPC) send(ctx context.Context, cli *http.Client, service servicer.Servi
 		ctx, _ = plugin.Handle(ctx, req)
 	}
 
-	// send request
+	return
+}
+
+func (r *RPC) send(ctx context.Context, cli *http.Client, service servicer.Servicer, node servicer.Node,
+	req *http.Request, response client.Response,
+) (resp *http.Response, err error) {
 	start := time.Now()
-	resp, err := cli.Do(req)
-	ret.requestCost = time.Since(start).Milliseconds()
+	resp, err = cli.Do(req)
+	logger.AddField(ctx, logger.Reflect(logger.Cost, time.Since(start).Milliseconds()))
 
 	_ = service.Done(ctx, node, err)
-
-	// after plugins
-	for _, plugin := range r.afterPlugins {
-		ctx, _ = plugin.Handle(ctx, req, resp)
-	}
+	_ = r.afterSend(ctx, req, resp)
 
 	if err != nil {
 		return
 	}
-	defer resp.Body.Close()
+	// This don't close body !!!
 
-	response.HTTPCode = resp.StatusCode
+	logger.AddField(ctx, logger.Reflect(logger.Code, resp.StatusCode))
 	if resp.StatusCode != http.StatusOK {
 		err = fmt.Errorf("http code is %d", resp.StatusCode)
 		return
 	}
 
-	// decode response body
 	start = time.Now()
-	err = response.Codec.Decode(resp.Body, response.Body)
-	ret.decodeCost = time.Since(start).Milliseconds()
+	err = response.HandleResponse(ctx, resp)
+
+	logger.AddField(ctx, logger.Reflect(logger.Response, response.GetBody()))
+
+	return
+}
+
+func (r *RPC) afterSend(ctx context.Context, req *http.Request, resp *http.Response) (err error) {
+	// after plugins
+	for _, plugin := range r.afterPlugins {
+		ctx, _ = plugin.Handle(ctx, req, resp)
+	}
 
 	return
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/air-go/rpc/library/logger"
 	"github.com/go-redis/redis/v8"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +28,7 @@ func TestRedisLogger_BeforeProcess(t *testing.T) {
 
 	convey.Convey("TestRedisLogger_BeforeProcess", t, func() {
 		convey.Convey("success", func() {
-			ctx := context.TODO()
+			ctx := logger.InitFieldsContainer(context.TODO())
 			ctx, err := l.BeforeProcess(ctx, redis.NewBoolCmd(ctx))
 
 			assert.Nil(t, err)
@@ -41,7 +42,7 @@ func TestRedisLogger_BeforeProcess(t *testing.T) {
 func TestRedisLogger_AfterProcess(t *testing.T) {
 	convey.Convey("TestRedisLogger_AfterProcess", t, func() {
 		convey.Convey("Logger nil", func() {
-			ctx := context.TODO()
+			ctx := logger.InitFieldsContainer(context.TODO())
 			l := &RedisLogger{}
 			err := l.AfterProcess(ctx, redis.NewBoolCmd(ctx))
 			assert.Nil(t, err)
@@ -51,7 +52,7 @@ func TestRedisLogger_AfterProcess(t *testing.T) {
 			assert.Nil(t, err)
 			assert.NotNil(t, l)
 
-			ctx := context.TODO()
+			ctx := logger.InitFieldsContainer(context.TODO())
 			cmd := redis.NewBoolCmd(ctx)
 			cmd.SetErr(errors.New("error"))
 
@@ -63,7 +64,7 @@ func TestRedisLogger_AfterProcess(t *testing.T) {
 			assert.Nil(t, err)
 			assert.NotNil(t, l)
 
-			ctx := context.TODO()
+			ctx := logger.InitFieldsContainer(context.TODO())
 			cmd := redis.NewBoolCmd(ctx)
 
 			err = l.AfterProcess(ctx, cmd)
@@ -79,7 +80,7 @@ func TestRedisLogger_BeforeProcessPipeline(t *testing.T) {
 
 	convey.Convey("TestRedisLogger_BeforeProcessPipeline", t, func() {
 		convey.Convey("success", func() {
-			ctx := context.TODO()
+			ctx := logger.InitFieldsContainer(context.TODO())
 			ctx, err := l.BeforeProcessPipeline(ctx, []redis.Cmder{redis.NewBoolCmd(ctx)})
 
 			assert.Nil(t, err)
@@ -93,7 +94,7 @@ func TestRedisLogger_BeforeProcessPipeline(t *testing.T) {
 func TestRedisLogger_AfterProcessPipeline(t *testing.T) {
 	convey.Convey("TestRedisLogger_AfterProcessPipeline", t, func() {
 		convey.Convey("Logger nil", func() {
-			ctx := context.TODO()
+			ctx := logger.InitFieldsContainer(context.TODO())
 			l := &RedisLogger{}
 			err := l.AfterProcessPipeline(ctx, []redis.Cmder{redis.NewBoolCmd(ctx)})
 			assert.Nil(t, err)
@@ -103,7 +104,7 @@ func TestRedisLogger_AfterProcessPipeline(t *testing.T) {
 			assert.Nil(t, err)
 			assert.NotNil(t, l)
 
-			ctx := context.TODO()
+			ctx := logger.InitFieldsContainer(context.TODO())
 			cmd := redis.NewBoolCmd(ctx)
 			cmd.SetErr(errors.New("error"))
 
@@ -115,7 +116,7 @@ func TestRedisLogger_AfterProcessPipeline(t *testing.T) {
 			assert.Nil(t, err)
 			assert.NotNil(t, l)
 
-			ctx := context.TODO()
+			ctx := logger.InitFieldsContainer(context.TODO())
 			cmd := redis.NewBoolCmd(ctx)
 
 			err = l.AfterProcessPipeline(ctx, []redis.Cmder{cmd})

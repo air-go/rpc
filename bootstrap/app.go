@@ -2,12 +2,12 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/why444216978/go-util/assert"
 	"golang.org/x/sync/errgroup"
 
@@ -33,7 +33,7 @@ type App struct {
 	opt    *Option
 	ctx    context.Context
 	server server.Server
-	cancel func()
+	cancel func() // used to trigger shutdown at any time
 }
 
 func NewApp(srv server.Server, opts ...OptionFunc) *App {
@@ -47,8 +47,8 @@ func NewApp(srv server.Server, opts ...OptionFunc) *App {
 	app := &App{
 		opt:    opt,
 		ctx:    ctx,
-		cancel: cancel,
 		server: srv,
+		cancel: cancel,
 	}
 
 	return app
@@ -60,31 +60,36 @@ func (a *App) Start() error {
 		return a.start()
 	})
 	g.Go(func() (err error) {
-		return a.registerSignal()
+		err = a.registerSignal()
+		return
 	})
 	g.Go(func() (err error) {
-		return a.registerService()
-	})
-	g.Go(func() (err error) {
-		return a.shutdown()
+		err = a.registerService()
+		return
 	})
 	return g.Wait()
 }
 
-func (a *App) start() error {
-	return a.server.Start()
+func (a *App) start() (err error) {
+	if err = a.server.Start(); err != nil {
+		sysPrint(err.Error())
+		a.cancel()
+	}
+	return
 }
 
 func (a *App) registerSignal() (err error) {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
-	err = errors.Errorf("%s: exit by signal %v\n", time.Now().Format("2006-01-02 15:04:05"), <-ch)
+	select {
+	case s := <-ch:
+		sysPrint(fmt.Sprintf("%s: exit by signal %v\n", time.Now().Format("2006-01-02 15:04:05"), s))
+	case <-a.ctx.Done():
+	}
 
 	// trigger shutdown
-	a.cancel()
-
-	return
+	return a.shutdown()
 }
 
 func (a *App) registerService() (err error) {
@@ -96,8 +101,6 @@ func (a *App) registerService() (err error) {
 }
 
 func (a *App) shutdown() (err error) {
-	<-a.ctx.Done()
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
