@@ -18,7 +18,6 @@ type Request interface {
 	GetMethod() string
 	GetPath() string
 	GetQuery() url.Values
-	GetValues() url.Values
 	GetBody() interface{}
 	GetCodec() codec.Codec
 }
@@ -31,7 +30,6 @@ type DefaultRequest struct {
 	Query       url.Values
 	Method      string
 	Header      http.Header
-	Values      url.Values
 	Body        interface{}
 	Codec       codec.Codec
 }
@@ -61,10 +59,6 @@ func (r *DefaultRequest) GetQuery() url.Values {
 		r.Query = url.Values{}
 	}
 	return r.Query
-}
-
-func (r *DefaultRequest) GetValues() url.Values {
-	return r.Values
 }
 
 func (r *DefaultRequest) GetBody() interface{} {

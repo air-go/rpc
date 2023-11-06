@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	httpClient "github.com/air-go/rpc/client/http"
+	"github.com/air-go/rpc/library/logger"
 	"github.com/air-go/rpc/library/logger/zap/service"
 	"github.com/air-go/rpc/library/servicer"
 	"github.com/air-go/rpc/library/servicer/mock"
@@ -31,7 +32,7 @@ func TestRPC_Send(t *testing.T) {
 
 	convey.Convey("TestRPC_Send", t, func() {
 		convey.Convey("request is nil", func() {
-			ctx := context.Background()
+			ctx := logger.InitFieldsContainer(context.Background())
 			err := l.Send(ctx, nil, nil)
 			assert.NotNil(t, err)
 		})
@@ -44,7 +45,7 @@ func TestRPC_Send(t *testing.T) {
 				Body:        map[string]interface{}{},
 				Codec:       jsonCodec.JSONCodec{},
 			}
-			ctx := context.Background()
+			ctx := logger.InitFieldsContainer(context.Background())
 			err := l.Send(ctx, req, nil)
 			assert.NotNil(t, err)
 		})
@@ -56,31 +57,15 @@ func TestRPC_Send(t *testing.T) {
 				Header:      nil,
 				Body:        map[string]interface{}{},
 			}
-			resp := &httpClient.Response{
+			resp := &httpClient.DataResponse{
 				Body: new(map[string]interface{}),
 			}
-			ctx := context.Background()
-			err := l.Send(ctx, req, resp)
-			assert.NotNil(t, err)
-		})
-		convey.Convey("response codec is nil", func() {
-			req := &httpClient.DefaultRequest{
-				ServiceName: "test",
-				Path:        "/test",
-				Method:      http.MethodGet,
-				Header:      nil,
-				Body:        map[string]interface{}{},
-				Codec:       jsonCodec.JSONCodec{},
-			}
-			resp := &httpClient.Response{
-				Body: new(map[string]interface{}),
-			}
-			ctx := context.Background()
+			ctx := logger.InitFieldsContainer(context.Background())
 			err := l.Send(ctx, req, resp)
 			assert.NotNil(t, err)
 		})
 		convey.Convey("success default request", func() {
-			ctx := context.Background()
+			ctx := logger.InitFieldsContainer(context.Background())
 
 			// http mock
 			srv, err := server.NewHTTP(func(server *gin.Engine) {
@@ -122,7 +107,7 @@ func TestRPC_Send(t *testing.T) {
 				Body:        map[string]interface{}{},
 				Codec:       jsonCodec.JSONCodec{},
 			}
-			resp := &httpClient.Response{
+			resp := &httpClient.DataResponse{
 				Body:  new(map[string]interface{}),
 				Codec: jsonCodec.JSONCodec{},
 			}
@@ -131,7 +116,4 @@ func TestRPC_Send(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
-}
-
-func TestRPC_getClient(t *testing.T) {
 }
