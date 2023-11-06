@@ -52,13 +52,11 @@ func NewRPCLogger(config *RPCConfig, opts ...RPCOption) (rl *RPCLogger, err erro
 }
 
 func (rl *RPCLogger) Info(ctx context.Context, msg string, fields ...logger.Field) {
-	newCtx := context.WithValue(ctx, logger.ContextRPC, logger.ContextRPC)
-	rl.logger().Info(newCtx, msg, fields...)
+	rl.logger().Info(ctx, msg, fields...)
 }
 
 func (rl *RPCLogger) Error(ctx context.Context, msg string, fields ...logger.Field) {
-	newCtx := context.WithValue(ctx, logger.ContextRPC, logger.ContextRPC)
-	rl.logger().Error(newCtx, msg, fields...)
+	rl.logger().Error(ctx, msg, fields...)
 }
 
 func (rl *RPCLogger) logger() *zapLogger.ZapLogger {

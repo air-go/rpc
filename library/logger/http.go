@@ -2,6 +2,7 @@ package logger
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"net/http"
 
@@ -16,9 +17,18 @@ func ExtractLogID(req *http.Request) string {
 		logID = snowflake.Generate().String()
 	}
 
-	req.Header.Add(LogHeader, logID)
+	req.Header.Set(LogHeader, logID)
 
 	return logID
+}
+
+func SetLogID(ctx context.Context, header http.Header) (err error) {
+	logID := ValueLogID(ctx)
+	if logID == "" {
+		logID = snowflake.Generate().String()
+	}
+	header.Set(LogHeader, logID)
+	return
 }
 
 // GetRequestBody get http request body

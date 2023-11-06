@@ -15,6 +15,7 @@ import (
 	"github.com/why444216978/go-util/assert"
 
 	client "github.com/air-go/rpc/client/http"
+	"github.com/air-go/rpc/library/app"
 	"github.com/air-go/rpc/library/logger"
 	"github.com/air-go/rpc/library/servicer"
 	timeoutLib "github.com/air-go/rpc/server/http/middleware/timeout"
@@ -56,6 +57,8 @@ func (r *RPC) Send(ctx context.Context, request client.Request, response client.
 		return
 	}
 
+	ctx = logger.ForkContext(ctx)
+
 	serviceName := request.GetServiceName()
 
 	defer func() {
@@ -67,6 +70,9 @@ func (r *RPC) Send(ctx context.Context, request client.Request, response client.
 			logger.Reflect(logger.ServiceName, serviceName),
 			logger.Reflect(logger.Header, request.GetHeader()),
 			logger.Reflect(logger.Method, request.GetMethod()),
+			logger.Reflect(logger.ClientIP, app.LocalIP()),
+			logger.Reflect(logger.ClientPort, app.Port()),
+			logger.Reflect(logger.Request, request.GetBody()),
 			logger.Reflect(logger.API, request.GetPath()),
 			logger.Reflect(logger.Request, request.GetBody()),
 		}
@@ -112,6 +118,8 @@ func (r *RPC) Send(ctx context.Context, request client.Request, response client.
 	if err != nil {
 		return
 	}
+
+	logger.SetLogID(ctx, req.Header)
 
 	// timeout deliver
 	if err = timeoutLib.SetHeader(ctx, req.Header); err != nil {
