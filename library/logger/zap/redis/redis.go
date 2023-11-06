@@ -121,8 +121,8 @@ func (rl *RedisLogger) AfterProcessPipeline(ctx context.Context, cmds []redis.Cm
 }
 
 func (rl *RedisLogger) Info(ctx context.Context, isPipeline bool, cmds []redis.Cmder, cost int64) {
-	newCtx, logFields := rl.fields(ctx, isPipeline, cmds, cost)
-	rl.logger().Info(newCtx, "info", logFields...)
+	ctx = rl.fields(ctx, isPipeline, cmds, cost)
+	rl.logger().Info(ctx, "info")
 }
 
 func (rl *RedisLogger) Error(ctx context.Context, isPipeline bool, cmds []redis.Cmder, cost int64) {
@@ -134,11 +134,14 @@ func (rl *RedisLogger) Error(ctx context.Context, isPipeline bool, cmds []redis.
 		}
 		errs = append(errs, strconv.Itoa(idx)+"-"+err.Error())
 	}
-	newCtx, logFields := rl.fields(ctx, isPipeline, cmds, cost)
-	rl.logger().Error(newCtx, strings.Join(errs, ","), logFields...)
+
+	ctx = rl.fields(ctx, isPipeline, cmds, cost)
+	rl.logger().Error(ctx, strings.Join(errs, ","))
 }
 
-func (rl *RedisLogger) fields(ctx context.Context, isPipeline bool, cmds []redis.Cmder, cost int64) (context.Context, []logger.Field) {
+func (rl *RedisLogger) fields(ctx context.Context, isPipeline bool, cmds []redis.Cmder, cost int64) context.Context {
+	ctx = logger.ForkContext(ctx)
+
 	l := len(cmds)
 	names := make([]string, l)
 	args := make([]interface{}, l)
@@ -154,9 +157,7 @@ func (rl *RedisLogger) fields(ctx context.Context, isPipeline bool, cmds []redis
 		method = cmds[0].Name()
 	}
 
-	newCtx := logger.ForkContext(ctx)
-
-	logger.AddField(newCtx,
+	logger.AddField(ctx,
 		logger.Reflect(logger.Header, http.Header{}),
 		logger.Reflect(logger.Method, method),
 		logger.Reflect(logger.Request, args),
@@ -169,7 +170,7 @@ func (rl *RedisLogger) fields(ctx context.Context, isPipeline bool, cmds []redis
 		logger.Reflect(logger.API, method),
 		logger.Reflect(logger.Cost, cost))
 
-	return newCtx, []logger.Field{}
+	return ctx
 }
 
 func (rl *RedisLogger) logger() *zapLogger.ZapLogger {

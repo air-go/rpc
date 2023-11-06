@@ -110,6 +110,8 @@ func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (stri
 		return
 	}
 
+	ctx = logger.ForkContext(ctx)
+
 	elapsed := time.Since(begin)
 
 	sql, rows := fc()
