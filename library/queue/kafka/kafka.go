@@ -126,6 +126,7 @@ func (cli *Client) Consume(params interface{}) (err error) {
 	}
 	defer cg.Close()
 
+	// TODO full log fields
 	ctx := p.ctx
 	if assert.IsNil(ctx) {
 		ctx = context.Background()
@@ -357,7 +358,7 @@ func (cli *Client) refreshBrokers(client sarama.Client) {
 				continue
 			}
 			if err := client.RefreshBrokers(addrs); err != nil {
-				cli.opts.logger.Error(context.Background(), "kafkaRefreshBrokersErr", logger.Error(err))
+				cli.opts.logger.Error(logger.InitFieldsContainer(context.Background()), "kafkaRefreshBrokersErr", logger.Error(err))
 			}
 		}
 	}()

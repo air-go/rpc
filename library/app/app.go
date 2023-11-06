@@ -3,12 +3,15 @@ package app
 import (
 	"time"
 
+	"github.com/why444216978/go-util/sys"
+
 	"github.com/air-go/rpc/library/config"
 )
 
 var app struct {
 	AppName        string
 	RegistryName   string
+	LocalIP        string
 	AppPort        int
 	Pprof          bool
 	IsDebug        bool
@@ -19,7 +22,9 @@ var app struct {
 }
 
 func InitApp() (err error) {
-	return config.ReadConfig("app", "toml", &app)
+	err = config.ReadConfig("app", "toml", &app)
+	app.LocalIP, _ = sys.LocalIP()
+	return
 }
 
 func Name() string {
@@ -28,6 +33,10 @@ func Name() string {
 
 func RegistryName() string {
 	return app.RegistryName
+}
+
+func LocalIP() string {
+	return app.LocalIP
 }
 
 func Port() int {

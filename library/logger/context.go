@@ -8,7 +8,7 @@ type contextKey uint64
 
 const (
 	contextLogID contextKey = iota
-	contextHTTPLogFields
+	contextLogFields
 	contextTraceID
 	ContextRPC
 )
@@ -41,38 +41,4 @@ func ValueTraceID(ctx context.Context) string {
 		return ""
 	}
 	return logID
-}
-
-// WithFields inject common http log fields to context
-func WithFields(ctx context.Context, fields []Field) context.Context {
-	return context.WithValue(ctx, contextHTTPLogFields, fields)
-}
-
-// ValueFields extrect common http log fields from context
-func ValueFields(ctx context.Context) []Field {
-	val := ctx.Value(contextHTTPLogFields)
-	fields, ok := val.([]Field)
-	if !ok {
-		return []Field{}
-	}
-	return fields
-}
-
-func AddField(ctx context.Context, fields ...Field) context.Context {
-	arr := ValueFields(ctx)
-
-	oldIndex := map[string]int{}
-	for i, f := range arr {
-		oldIndex[f.Key()] = i
-	}
-
-	for _, f := range fields {
-		if i, ok := oldIndex[f.Key()]; ok {
-			arr[i] = f
-			continue
-		}
-		arr = append(arr, f)
-	}
-
-	return WithFields(ctx, arr)
 }

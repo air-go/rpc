@@ -184,24 +184,15 @@ func (l *ZapLogger) Fatal(ctx context.Context, msg string, fields ...logger.Fiel
 	l.Logger.Fatal(msg, l.extractFields(ctx, fields...)...)
 }
 
-// extractFields extract context field and keep key unique, save fields
 func (l *ZapLogger) extractFields(ctx context.Context, fields ...logger.Field) []zap.Field {
-	ctxFields := logger.ValueFields(ctx)
-	target := map[string]zap.Field{}
-	for _, f := range ctxFields {
-		target[f.Key()] = zap.Reflect(f.Key(), f.Value())
-	}
+	logger.AddField(ctx, fields...)
 
-	for _, f := range fields {
-		target[f.Key()] = zap.Reflect(f.Key(), f.Value())
-	}
+	fs := []zap.Field{}
+	logger.RangeFields(ctx, func(f logger.Field) {
+		fs = append(fs, zap.Reflect(f.Key(), f.Value()))
+	})
 
-	new := make([]zap.Field, 0)
-	for _, f := range target {
-		new = append(new, f)
-	}
-
-	return new
+	return fs
 }
 
 func (l *ZapLogger) Close() error {

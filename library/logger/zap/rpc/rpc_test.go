@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/air-go/rpc/library/logger"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,12 +24,13 @@ func TestRPCLoggerWrite(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, l)
 
+	ctx := logger.InitFieldsContainer(context.Background())
 	convey.Convey("TestRPCLoggerWrite", t, func() {
 		convey.Convey("Info", func() {
-			l.Info(context.Background(), "msg")
+			l.Info(ctx, "msg")
 		})
 		convey.Convey("Error", func() {
-			l.Error(context.Background(), "msg")
+			l.Error(ctx, "msg")
 		})
 	})
 }

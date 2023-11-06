@@ -20,7 +20,7 @@ import (
 // The code after next takes effect in the reverse order
 func OpentracingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctx := c.Request.Context()
+		ctx := logger.InitFieldsContainer(c.Request.Context())
 
 		ctx, span, traceID := jaegerHTTP.ExtractHTTP(ctx, c.Request)
 		if !assert.IsNil(span) {
@@ -33,11 +33,10 @@ func OpentracingMiddleware() gin.HandlerFunc {
 
 		ctx = c.Request.Context()
 
-		fields := logger.ValueFields(ctx)
-		request := logger.Find(logger.Request, fields)
+		request := logger.FindField(ctx, logger.Request)
 		req, _ := request.Value().(string)
 
-		response := logger.Find(logger.Response, fields)
+		response := logger.FindField(ctx, logger.Response)
 		resp, _ := conversion.JsonEncode(response.Value())
 
 		logID := logger.ValueLogID(ctx)

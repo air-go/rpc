@@ -13,6 +13,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/air-go/rpc/library/logger"
 	"github.com/air-go/rpc/library/servicer"
 	"github.com/air-go/rpc/library/servicer/mock"
 )
@@ -37,7 +38,7 @@ func TestProduce(t *testing.T) {
 	// ap.ExpectInputAndSucceed()
 	// cli.asyncProducer = ap
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	ctx, cancel := context.WithTimeout(logger.InitFieldsContainer(context.Background()), time.Second*1)
 	defer cancel()
 	_, err := cli.Produce(ctx, &ProduceParams{
 		Async: false,

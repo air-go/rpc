@@ -105,7 +105,6 @@ QQ群：909211071
     - etcd //etcd
     - grpc //grpc封装
     - opentracing //opentracing分布式链路追踪
-    - job //单机离线任务（单机简易版，后续接入成熟组件）
     - limiter //限流
     - lock //分布式锁
     - logger //日志

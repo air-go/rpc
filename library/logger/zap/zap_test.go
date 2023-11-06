@@ -145,16 +145,20 @@ func Test_zapLevel(t *testing.T) {
 func TestZapLoggerWrite(t *testing.T) {
 	convey.Convey("TestZapLoggerWrite", t, func() {
 		convey.Convey("Debug", func() {
-			StdLogger.Debug(context.Background(), "msg")
+			ctx := logger.InitFieldsContainer(context.TODO())
+			StdLogger.Debug(ctx, "msg")
 		})
 		convey.Convey("Info", func() {
-			StdLogger.Info(context.Background(), "msg")
+			ctx := logger.InitFieldsContainer(context.TODO())
+			StdLogger.Info(ctx, "msg")
 		})
 		convey.Convey("Warn", func() {
-			StdLogger.Warn(context.Background(), "msg")
+			ctx := logger.InitFieldsContainer(context.TODO())
+			StdLogger.Warn(ctx, "msg")
 		})
 		convey.Convey("Error", func() {
-			StdLogger.Error(context.Background(), "msg")
+			ctx := logger.InitFieldsContainer(context.TODO())
+			StdLogger.Error(ctx, "msg")
 		})
 	})
 }
@@ -163,8 +167,8 @@ func TestZapLogger_extractFields(t *testing.T) {
 	l := &ZapLogger{}
 	convey.Convey("TestZapLogger_extractFields", t, func() {
 		convey.Convey("sum fields", func() {
-			ctx := context.TODO()
-			ctx = logger.WithFields(ctx, []logger.Field{logger.Reflect("key", "value")})
+			ctx := logger.InitFieldsContainer(context.TODO())
+			logger.AddField(ctx, []logger.Field{logger.Reflect("key", "value")}...)
 			fields := l.extractFields(ctx, []logger.Field{logger.Reflect("key1", "value1")}...)
 
 			count := 2
@@ -182,8 +186,8 @@ func TestZapLogger_extractFields(t *testing.T) {
 			assert.Equal(t, count, actual)
 		})
 		convey.Convey("cover fields", func() {
-			ctx := context.TODO()
-			ctx = logger.WithFields(ctx, []logger.Field{logger.Reflect("key", "value")})
+			ctx := logger.InitFieldsContainer(context.TODO())
+			logger.AddField(ctx, []logger.Field{logger.Reflect("key", "value")}...)
 			fields := l.extractFields(ctx, []logger.Field{logger.Reflect("key", "value1")}...)
 
 			count := 1

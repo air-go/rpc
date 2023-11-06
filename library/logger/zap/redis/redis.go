@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
+	"github.com/air-go/rpc/library/app"
 	"github.com/air-go/rpc/library/logger"
 	zapLogger "github.com/air-go/rpc/library/logger/zap"
 )
@@ -153,23 +154,21 @@ func (rl *RedisLogger) fields(ctx context.Context, isPipeline bool, cmds []redis
 		method = cmds[0].Name()
 	}
 
-	fields := logger.ValueFields(ctx)
-	f := []logger.Field{
+	newCtx := logger.ForkContext(ctx)
+
+	logger.AddField(newCtx,
 		logger.Reflect(logger.Header, http.Header{}),
 		logger.Reflect(logger.Method, method),
 		logger.Reflect(logger.Request, args),
 		logger.Reflect(logger.Response, response),
 		logger.Reflect(logger.Code, 0),
-		logger.Reflect(logger.ClientIP, logger.Find(logger.ServerIP, fields).Value()),
-		logger.Reflect(logger.ClientPort, logger.Find(logger.ServerPort, fields).Value()),
+		logger.Reflect(logger.ClientIP, app.LocalIP()),
+		logger.Reflect(logger.ClientPort, app.Port()),
 		logger.Reflect(logger.ServerIP, rl.config.Host),
 		logger.Reflect(logger.ServerPort, rl.config.Port),
 		logger.Reflect(logger.API, method),
-		logger.Reflect(logger.Cost, cost),
-	}
+		logger.Reflect(logger.Cost, cost))
 
-	newCtx := context.WithValue(ctx, logger.ContextRPC, logger.ContextRPC)
-	newCtx = logger.WithFields(newCtx, f)
 	return newCtx, []logger.Field{}
 }
 

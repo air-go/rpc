@@ -1,0 +1,31 @@
+package logger
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestInitFieldsContainer(t *testing.T) {
+	ctx := InitFieldsContainer(context.Background())
+
+	AddField(ctx, Reflect("key", "val"))
+	assert.Equal(t, "val", FindField(ctx, "key").Value())
+
+	AddField(ctx, Reflect("key", "val1"))
+	assert.Equal(t, "val1", FindField(ctx, "key").Value())
+
+	AddField(ctx, Reflect("key1", "val"))
+	assert.Equal(t, 2, len(ExtractFields(ctx)))
+
+	DeleteField(ctx, "key1")
+
+	assert.Equal(t, "key", ExtractFields(ctx)[0].Key())
+
+	newCtx := ForkContext(ctx)
+	DeleteField(newCtx, "key")
+
+	assert.Equal(t, "key", ExtractFields(ctx)[0].Key())
+	assert.Equal(t, 0, len(ExtractFields(newCtx)))
+}
