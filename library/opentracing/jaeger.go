@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/air-go/rpc/library/logger"
 	"github.com/opentracing/opentracing-go"
 	opentracingLog "github.com/opentracing/opentracing-go/log"
 	"github.com/uber/jaeger-client-go"
@@ -11,15 +12,15 @@ import (
 )
 
 const (
-	FieldLogID   = "Log-Id"
-	FieldTraceID = "Trace-Id"
-	FieldSpanID  = "Span-Id"
+	tagLogID   = "Log-Id"
+	tagTraceID = "Trace-Id"
+	tagSpanID  = "Span-Id"
 )
 
 const (
-	LogFieldsRequest  = "request"
-	LogFieldsResponse = "response"
-	LogFieldsArgs     = "args"
+	logFieldsRequest  = "request"
+	logFieldsResponse = "response"
+	logFieldsArgs     = "args"
 )
 
 var Tracer opentracing.Tracer
@@ -53,18 +54,27 @@ func NewJaegerTracer(connCfg *Config, serviceName string) (opentracing.Tracer, i
 	return tracer, closer, nil
 }
 
-func SetRequest(span opentracing.Span, request string) {
-	span.LogFields(opentracingLog.String(LogFieldsRequest, request))
+func SetBasicTags(ctx context.Context, span opentracing.Span) {
+	SetTraceTag(ctx, span)
+	SetLogID(ctx, span)
 }
 
-func SetResponse(span opentracing.Span, response string) {
-	span.LogFields(opentracingLog.String(LogFieldsResponse, response))
+func SetLogID(ctx context.Context, span opentracing.Span) {
+	span.SetTag(tagLogID, logger.ValueLogID(ctx))
 }
 
-func SetCommonTag(ctx context.Context, span opentracing.Span) {
+func SetTraceTag(ctx context.Context, span opentracing.Span) {
 	jaegerSpanContext := spanContextToJaegerContext(span.Context())
-	span.SetTag(FieldTraceID, jaegerSpanContext.TraceID().String())
-	span.SetTag(FieldSpanID, jaegerSpanContext.SpanID().String())
+	span.SetTag(tagTraceID, jaegerSpanContext.TraceID().String())
+	span.SetTag(tagSpanID, jaegerSpanContext.SpanID().String())
+}
+
+func SetRequest(span opentracing.Span, request interface{}) {
+	span.LogFields(opentracingLog.Object(logFieldsRequest, request))
+}
+
+func SetResponse(span opentracing.Span, response interface{}) {
+	span.LogFields(opentracingLog.Object(logFieldsResponse, response))
 }
 
 func GetTraceID(span opentracing.Span) string {

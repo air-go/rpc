@@ -68,13 +68,12 @@ func TestInjectHTTP(t *testing.T) {
 		Header: http.Header{},
 		URL:    &url.URL{},
 	}
-	logID := "logID"
 
 	convey.Convey("TestInjectHTTP", t, func() {
 		convey.Convey("Tracer nil", func() {
 			libraryOpentracing.Tracer = nil
 
-			err := InjectHTTP(ctx, req, logID)
+			err := InjectHTTP(ctx, req)
 			assert.Equal(t, err, nil)
 		})
 		convey.Convey("success", func() {
@@ -85,20 +84,9 @@ func TestInjectHTTP(t *testing.T) {
 			span.Finish()
 			_ = tracer.Inject(span.Context(), opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(req.Header))
 
-			err := InjectHTTP(ctx, req, logID)
+			err := InjectHTTP(ctx, req)
 			assert.Equal(t, err, nil)
 			assert.Len(t, tracer.FinishedSpans(), 2)
-		})
-	})
-}
-
-func TestSetHTTPLog(t *testing.T) {
-	convey.Convey("TestSetHTTPLog", t, func() {
-		convey.Convey("success", func() {
-			tracer := mocktracer.New()
-			span := tracer.StartSpan(httpServerComponentPrefix + "uri")
-			span.Finish()
-			SetHTTPLog(span, "logID", "req", "resp")
 		})
 	})
 }

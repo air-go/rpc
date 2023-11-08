@@ -10,22 +10,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type headerKey string
+type contextKey uint64
 
 const (
-	timeoutKey headerKey = "Timeout-Millisecond"
-	startKey   headerKey = "Timeout-StartAt"
+	startKey contextKey = iota
 )
 
-func (k headerKey) String() string {
-	return string(k)
-}
+const (
+	timeoutKey = "Timeout-Millisecond"
+)
 
 // TimeoutMiddleware is used to pass the remaining timeout
 func TimeoutMiddleware(timeout time.Duration) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		remain := timeout
-		headerTimeout := c.Request.Header.Get(timeoutKey.String())
+		headerTimeout := c.Request.Header.Get(timeoutKey)
 		if headerTimeout != "" {
 			t, _ := strconv.ParseInt(headerTimeout, 10, 64)
 			remain = time.Duration(t) * time.Millisecond
@@ -74,7 +73,7 @@ func SetHeader(ctx context.Context, header http.Header) (err error) {
 	if err != nil {
 		return
 	}
-	header.Set(timeoutKey.String(), strconv.FormatInt(remain, 10))
+	header.Set(timeoutKey, strconv.FormatInt(remain, 10))
 	return
 }
 

@@ -2,7 +2,6 @@ package redis
 
 import (
 	"context"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -158,7 +157,6 @@ func (rl *RedisLogger) fields(ctx context.Context, isPipeline bool, cmds []redis
 	}
 
 	logger.AddField(ctx,
-		logger.Reflect(logger.Header, http.Header{}),
 		logger.Reflect(logger.Method, method),
 		logger.Reflect(logger.Request, args),
 		logger.Reflect(logger.Response, response),
