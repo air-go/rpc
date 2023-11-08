@@ -115,7 +115,7 @@ func (fc *fieldsContainer) findField(key string) Field {
 	if f, ok := fc.keys[key]; ok {
 		return f.Value.(Field)
 	}
-	return nil
+	return &field{}
 }
 
 func (fc *fieldsContainer) clone() *fieldsContainer {

@@ -41,7 +41,7 @@ func (jh *jaegerHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (conte
 	}
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, libraryOpentracing.Tracer, operationRedis+cmd.Name())
 
-	libraryOpentracing.SetCommonTag(ctx, span)
+	libraryOpentracing.SetTraceTag(ctx, span)
 
 	ctx = opentracing.ContextWithSpan(ctx, span)
 	return ctx, nil

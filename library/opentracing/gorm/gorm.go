@@ -43,7 +43,7 @@ func after(db *gorm.DB) {
 	}
 	defer span.Finish()
 
-	libraryOpentracing.SetCommonTag(db.Statement.Context, span)
+	libraryOpentracing.SetTraceTag(db.Statement.Context, span)
 
 	if db.Error != nil {
 		span.LogFields(opentracing_log.Error(db.Error))

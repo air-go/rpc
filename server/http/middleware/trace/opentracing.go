@@ -6,9 +6,9 @@ import (
 	opentracingLog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
 	"github.com/why444216978/go-util/assert"
-	"github.com/why444216978/go-util/conversion"
 
 	"github.com/air-go/rpc/library/logger"
+	"github.com/air-go/rpc/library/opentracing"
 	jaegerHTTP "github.com/air-go/rpc/library/opentracing/http"
 )
 
@@ -33,14 +33,9 @@ func OpentracingMiddleware() gin.HandlerFunc {
 
 		ctx = c.Request.Context()
 
-		request := logger.FindField(ctx, logger.Request)
-		req, _ := request.Value().(string)
-
-		response := logger.FindField(ctx, logger.Response)
-		resp, _ := conversion.JsonEncode(response.Value())
-
-		logID := logger.ValueLogID(ctx)
-		jaegerHTTP.SetHTTPLog(span, logID, req, resp)
+		opentracing.SetLogID(ctx, span)
+		opentracing.SetRequest(span, logger.FindField(ctx, logger.Request).Value())
+		opentracing.SetResponse(span, logger.FindField(ctx, logger.Response).Value())
 
 		if len(c.Errors) > 0 {
 			span.LogFields(opentracingLog.Error(errors.New(c.Errors.String())))

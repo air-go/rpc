@@ -185,6 +185,7 @@ func (l *ZapLogger) Fatal(ctx context.Context, msg string, fields ...logger.Fiel
 }
 
 func (l *ZapLogger) extractFields(ctx context.Context, fields ...logger.Field) []zap.Field {
+	ctx = logger.ForkContext(ctx)
 	logger.AddField(ctx, fields...)
 
 	fs := []zap.Field{}

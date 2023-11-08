@@ -40,7 +40,7 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 		logger.AddField(ctx,
 			logger.Reflect(logger.LogID, logID),
 			logger.Reflect(logger.TraceID, logger.ValueTraceID(ctx)),
-			logger.Reflect(logger.Header, c.Request.Header),
+			logger.Reflect(logger.RequestHeader, c.Request.Header),
 			logger.Reflect(logger.Method, c.Request.Method),
 			logger.Reflect(logger.Request, base64.StdEncoding.EncodeToString(req)),
 			logger.Reflect(logger.Response, make(map[string]interface{})),

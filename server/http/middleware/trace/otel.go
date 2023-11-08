@@ -1,8 +1,6 @@
 package trace
 
 import (
-	"fmt"
-
 	"github.com/gin-gonic/gin"
 	"github.com/why444216978/go-util/conversion"
 	"go.opentelemetry.io/otel/attribute"
@@ -32,10 +30,8 @@ func OpentelemetryMiddleware() gin.HandlerFunc {
 			trace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(app.Name(), c.FullPath(), c.Request)...),
 			trace.WithSpanKind(trace.SpanKindServer),
 		}
-		spanName := c.FullPath()
-		if spanName == "" {
-			spanName = fmt.Sprintf("%s-404", c.Request.Method)
-		}
+
+		spanName := c.Request.URL.Path
 		ctx, span := libraryOtel.Tracer().Start(ctx, spanName, opts...)
 		defer span.End()
 

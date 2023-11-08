@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/air-go/rpc/library/logger"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	gormLogger "gorm.io/gorm/logger"
@@ -40,32 +41,35 @@ func TestGormLogger_LogMode(t *testing.T) {
 }
 
 func TestGormLoggerWrite(t *testing.T) {
+	ctx := logger.InitFieldsContainer(context.Background())
 	convey.Convey("TestGormLoggerWrite", t, func() {
 		convey.Convey("Info", func() {
 			l, err := NewGorm(&GormConfig{})
 			assert.Nil(t, err)
 			assert.NotNil(t, l)
 
-			l.Info(context.TODO(), "msg")
+			l.Info(ctx, "msg")
 		})
 		convey.Convey("Warn", func() {
 			l, err := NewGorm(&GormConfig{})
 			assert.Nil(t, err)
 			assert.NotNil(t, l)
 
-			l.Warn(context.TODO(), "msg")
+			l.Warn(ctx, "msg")
 		})
 		convey.Convey("Error", func() {
 			l, err := NewGorm(&GormConfig{})
 			assert.Nil(t, err)
 			assert.NotNil(t, l)
 
-			l.Error(context.TODO(), "msg")
+			l.Error(ctx, "msg")
 		})
 	})
 }
 
 func TestGormLogger_Trace(t *testing.T) {
+	ctx := logger.InitFieldsContainer(context.Background())
+
 	fc := func() (string, int64) { return "select * from table;", 0 }
 	convey.Convey("TestGormLogger_Trace", t, func() {
 		convey.Convey("l.LogLevel <= gormLogger.Silent", func() {
@@ -73,7 +77,7 @@ func TestGormLogger_Trace(t *testing.T) {
 			assert.Nil(t, err)
 			assert.NotNil(t, l)
 
-			l.Trace(context.TODO(), time.Now(), fc, nil)
+			l.Trace(ctx, time.Now(), fc, nil)
 		})
 		convey.Convey("error log", func() {
 			l, err := NewGorm(&GormConfig{
@@ -83,7 +87,7 @@ func TestGormLogger_Trace(t *testing.T) {
 			assert.Nil(t, err)
 			assert.NotNil(t, l)
 
-			l.Trace(context.TODO(), time.Now(), fc, errors.New("error"))
+			l.Trace(ctx, time.Now(), fc, errors.New("error"))
 		})
 		convey.Convey("slow log", func() {
 			l, err := NewGorm(&GormConfig{
@@ -94,7 +98,7 @@ func TestGormLogger_Trace(t *testing.T) {
 			assert.Nil(t, err)
 			assert.NotNil(t, l)
 
-			l.Trace(context.TODO(), time.Now().Add(-time.Second), fc, nil)
+			l.Trace(ctx, time.Now().Add(-time.Second), fc, nil)
 		})
 		convey.Convey("info log", func() {
 			l, err := NewGorm(&GormConfig{
@@ -105,7 +109,7 @@ func TestGormLogger_Trace(t *testing.T) {
 			assert.Nil(t, err)
 			assert.NotNil(t, l)
 
-			l.Trace(context.TODO(), time.Now(), fc, nil)
+			l.Trace(ctx, time.Now(), fc, nil)
 		})
 	})
 }

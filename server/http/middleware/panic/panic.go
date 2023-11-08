@@ -32,7 +32,7 @@ func PanicMiddleware(l logger.Logger) gin.HandlerFunc {
 				c.Request = c.Request.WithContext(ctx)
 
 				l.Error(ctx, fmt.Sprintf("%s", err)) // 这里不能打Fatal和Panic，否则程序会退出
-				response.ResponseJSON(c, http.StatusInternalServerError, nil, response.WrapToast(nil, http.StatusText(http.StatusInternalServerError)))
+				response.ResponseJSON(c, http.StatusInternalServerError, response.WrapToast(http.StatusText(http.StatusInternalServerError)))
 				c.AbortWithStatus(http.StatusInternalServerError)
 
 				//subject := fmt.Sprintf("【重要错误】%s 项目出错了！", "go-gin")

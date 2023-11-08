@@ -39,7 +39,7 @@ func ExtractHTTP(ctx context.Context, req *http.Request) (context.Context, opent
 	}
 	span.SetTag(string(ext.Component), httpServerComponentPrefix+req.URL.Path)
 
-	libraryOpentracing.SetCommonTag(ctx, span)
+	libraryOpentracing.SetTraceTag(ctx, span)
 
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
@@ -47,7 +47,7 @@ func ExtractHTTP(ctx context.Context, req *http.Request) (context.Context, opent
 }
 
 // InjectHTTP is used to inject HTTP span
-func InjectHTTP(ctx context.Context, req *http.Request, logID string) error {
+func InjectHTTP(ctx context.Context, req *http.Request) error {
 	if assert.IsNil(libraryOpentracing.Tracer) {
 		return nil
 	}
@@ -55,17 +55,8 @@ func InjectHTTP(ctx context.Context, req *http.Request, logID string) error {
 	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, libraryOpentracing.Tracer, httpClientComponentPrefix+req.URL.Path, ext.SpanKindRPCClient)
 	defer span.Finish()
 	span.SetTag(string(ext.Component), httpClientComponentPrefix+req.URL.Path)
-	span.SetTag(libraryOpentracing.FieldLogID, logID)
-	libraryOpentracing.SetCommonTag(ctx, span)
+
+	libraryOpentracing.SetBasicTags(ctx, span)
 
 	return libraryOpentracing.Tracer.Inject(span.Context(), opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(req.Header))
-}
-
-func SetHTTPLog(span opentracing.Span, logID, req, resp string) {
-	if assert.IsNil(span) {
-		return
-	}
-	span.SetTag(libraryOpentracing.FieldLogID, logID)
-	libraryOpentracing.SetRequest(span, req)
-	libraryOpentracing.SetResponse(span, resp)
 }

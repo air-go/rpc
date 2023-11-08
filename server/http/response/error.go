@@ -6,6 +6,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var EmptyError = &ResponseError{}
+
 // ResponseError is an response error
 type ResponseError struct {
 	toast string
@@ -31,31 +33,24 @@ func (r *ResponseError) Unwrap() error { return r.err }
 func (r *ResponseError) Cause() error { return r.err }
 
 // WrapToast return a new ResponseError
-func WrapToast(err error, toast string) *ResponseError {
-	if err == nil {
-		return &ResponseError{
-			err:   errors.New(toast),
-			toast: toast,
-		}
-	}
-
+func WrapToast(toast string) *ResponseError {
 	return &ResponseError{
-		err:   err,
 		toast: toast,
+		err:   errors.New(toast),
 	}
 }
 
 // WrapToastf return a new format ResponseError
-func WrapToastf(err error, toast string, args ...interface{}) *ResponseError {
-	if err == nil {
-		return &ResponseError{
-			err:   errors.Errorf(toast, args...),
-			toast: fmt.Sprintf(toast, args...),
-		}
-	}
-
+func WrapToastf(toast string, args ...interface{}) *ResponseError {
 	return &ResponseError{
-		err:   errors.Wrapf(err, toast, args...),
 		toast: fmt.Sprintf(toast, args...),
+		err:   errors.Errorf(toast, args...),
+	}
+}
+
+func WrapError(err error, toast string) *ResponseError {
+	return &ResponseError{
+		toast: toast,
+		err:   err,
 	}
 }

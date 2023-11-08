@@ -18,7 +18,6 @@ import (
 	"github.com/air-go/rpc/library/app"
 	"github.com/air-go/rpc/library/logger"
 	"github.com/air-go/rpc/library/servicer"
-	timeoutLib "github.com/air-go/rpc/server/http/middleware/timeout"
 )
 
 type RPC struct {
@@ -61,26 +60,25 @@ func (r *RPC) Send(ctx context.Context, request client.Request, response client.
 
 	serviceName := request.GetServiceName()
 
+	logger.AddField(ctx,
+		logger.Reflect(logger.ServiceName, serviceName),
+		logger.Reflect(logger.Method, request.GetMethod()),
+		logger.Reflect(logger.ClientIP, app.LocalIP()),
+		logger.Reflect(logger.ClientPort, app.Port()),
+		logger.Reflect(logger.Request, request.GetBody()),
+		logger.Reflect(logger.API, request.GetPath()),
+		logger.Reflect(logger.Request, request.GetBody()))
+
 	defer func() {
-		if r.logger == nil {
+		if assert.IsNil(r.logger) {
 			return
 		}
 
-		fields := []logger.Field{
-			logger.Reflect(logger.ServiceName, serviceName),
-			logger.Reflect(logger.Header, request.GetHeader()),
-			logger.Reflect(logger.Method, request.GetMethod()),
-			logger.Reflect(logger.ClientIP, app.LocalIP()),
-			logger.Reflect(logger.ClientPort, app.Port()),
-			logger.Reflect(logger.Request, request.GetBody()),
-			logger.Reflect(logger.API, request.GetPath()),
-			logger.Reflect(logger.Request, request.GetBody()),
-		}
 		if err != nil {
-			r.logger.Error(ctx, err.Error(), fields...)
+			r.logger.Error(ctx, err.Error())
 			return
 		}
-		r.logger.Info(ctx, "rpc success", fields...)
+		r.logger.Info(ctx, "rpc success")
 	}()
 
 	// get servicer
@@ -116,17 +114,6 @@ func (r *RPC) Send(ctx context.Context, request client.Request, response client.
 	// build http request
 	req, err := r.buildRequest(ctx, request, uu)
 	if err != nil {
-		return
-	}
-
-	logger.SetLogID(ctx, req.Header)
-
-	// timeout deliver
-	if err = timeoutLib.SetHeader(ctx, req.Header); err != nil {
-		return
-	}
-
-	if err = r.beforeSend(ctx, req); err != nil {
 		return
 	}
 
@@ -213,8 +200,12 @@ func (r *RPC) beforeSend(ctx context.Context, req *http.Request) (err error) {
 	}
 
 	// before plugins
-	for _, plugin := range r.beforePlugins {
-		ctx, _ = plugin.Handle(ctx, req)
+	var errH error
+	for _, p := range r.beforePlugins {
+		ctx, errH = p.Handle(ctx, req)
+		if errH != nil && !assert.IsNil(r.logger) {
+			r.logger.Warn(ctx, p.Name(), logger.Error(errH))
+		}
 	}
 
 	return
@@ -223,10 +214,19 @@ func (r *RPC) beforeSend(ctx context.Context, req *http.Request) (err error) {
 func (r *RPC) send(ctx context.Context, cli *http.Client, service servicer.Servicer, node servicer.Node,
 	req *http.Request, response client.Response,
 ) (resp *http.Response, err error) {
+	defer func() {
+		// Ensure plugin fields are written to the log.
+		logger.AddField(ctx, logger.Reflect(logger.RequestHeader, req.Header))
+	}()
+
+	if err = r.beforeSend(ctx, req); err != nil {
+		return
+	}
+
 	start := time.Now()
 	resp, err = cli.Do(req)
-	logger.AddField(ctx, logger.Reflect(logger.Cost, time.Since(start).Milliseconds()))
 
+	logger.AddField(ctx, logger.Reflect(logger.Cost, time.Since(start).Milliseconds()))
 	_ = service.Done(ctx, node, err)
 	_ = r.afterSend(ctx, req, resp)
 
@@ -235,13 +235,14 @@ func (r *RPC) send(ctx context.Context, cli *http.Client, service servicer.Servi
 	}
 	// This don't close body !!!
 
+	logger.AddField(ctx, logger.Reflect(logger.ResponseHeader, resp.Header))
 	logger.AddField(ctx, logger.Reflect(logger.Code, resp.StatusCode))
+
 	if resp.StatusCode != http.StatusOK {
 		err = fmt.Errorf("http code is %d", resp.StatusCode)
 		return
 	}
 
-	start = time.Now()
 	err = response.HandleResponse(ctx, resp)
 
 	logger.AddField(ctx, logger.Reflect(logger.Response, response.GetBody()))
@@ -251,8 +252,12 @@ func (r *RPC) send(ctx context.Context, cli *http.Client, service servicer.Servi
 
 func (r *RPC) afterSend(ctx context.Context, req *http.Request, resp *http.Response) (err error) {
 	// after plugins
-	for _, plugin := range r.afterPlugins {
-		ctx, _ = plugin.Handle(ctx, req, resp)
+	var errH error
+	for _, p := range r.afterPlugins {
+		ctx, errH = p.Handle(ctx, req, resp)
+		if errH != nil && !assert.IsNil(r.logger) {
+			r.logger.Warn(ctx, p.Name(), logger.Error(errH))
+		}
 	}
 
 	return

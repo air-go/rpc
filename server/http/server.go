@@ -110,7 +110,7 @@ func (s *Server) initHandler() *gin.Engine {
 	s.router(server)
 
 	server.NoRoute(func(c *gin.Context) {
-		response.ResponseJSON(c, http.StatusNotFound, nil, response.WrapToast(nil, http.StatusText(http.StatusNotFound)))
+		response.ResponseJSON(c, http.StatusNotFound, response.WrapToast(http.StatusText(http.StatusNotFound)))
 		c.AbortWithStatus(http.StatusNotFound)
 	})
 
