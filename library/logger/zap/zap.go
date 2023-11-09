@@ -94,7 +94,7 @@ func NewLogger(options ...Option) (l *ZapLogger, err error) {
 
 	l.Logger = zap.New(core,
 		zap.AddCaller(),
-		zap.AddStacktrace(errorEnabler),
+		// zap.AddStacktrace(errorEnabler),
 		zap.AddCallerSkip(l.opts.callSkip),
 		zap.Fields(fields...),
 	)
