@@ -110,7 +110,7 @@ func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (stri
 		return
 	}
 
-	ctx = logger.ForkContext(ctx)
+	ctx = logger.ForkContextOnlyMeta(ctx)
 
 	elapsed := time.Since(begin)
 
@@ -118,7 +118,7 @@ func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (stri
 	sqlSlice := strings.Split(sql, " ")
 	api := ""
 	if len(sqlSlice) > 1 {
-		api = sqlSlice[0]
+		api = strings.ToUpper(sqlSlice[0])
 	}
 
 	f := []zapcore.Field{

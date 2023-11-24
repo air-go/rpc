@@ -28,4 +28,10 @@ func TestInitFieldsContainer(t *testing.T) {
 
 	assert.Equal(t, "key", ExtractFields(ctx)[0].Key())
 	assert.Equal(t, 0, len(ExtractFields(newCtx)))
+
+	AddField(ctx, Reflect(AppName, "app_name"))
+	AddField(ctx, Reflect(LogID, "log_id"))
+	AddField(ctx, Reflect(TraceID, "trace_id"))
+	newCtx = ForkContextOnlyMeta(ctx)
+	assert.Equal(t, 3, len(ExtractFields(newCtx)))
 }

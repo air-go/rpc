@@ -46,7 +46,7 @@ func TestError(t *testing.T) {
 			err := errors.New("err")
 			field := Error(err)
 			assert.Equal(t, field.Key(), "error")
-			assert.Equal(t, field.Value(), err)
+			assert.Equal(t, field.Value(), err.Error())
 		})
 	})
 }

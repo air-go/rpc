@@ -139,7 +139,7 @@ func (rl *RedisLogger) Error(ctx context.Context, isPipeline bool, cmds []redis.
 }
 
 func (rl *RedisLogger) fields(ctx context.Context, isPipeline bool, cmds []redis.Cmder, cost int64) context.Context {
-	ctx = logger.ForkContext(ctx)
+	ctx = logger.ForkContextOnlyMeta(ctx)
 
 	l := len(cmds)
 	names := make([]string, l)

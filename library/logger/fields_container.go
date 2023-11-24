@@ -15,7 +15,14 @@ func InitFieldsContainer(ctx context.Context) context.Context {
 
 func ForkContext(ctx context.Context) context.Context {
 	if fields := mustFindLogFields(ctx); fields != nil {
-		return context.WithValue(ctx, contextLogFields, fields.clone())
+		return context.WithValue(ctx, contextLogFields, fields.clone(false))
+	}
+	return context.WithValue(ctx, contextLogFields, newFieldsContainer())
+}
+
+func ForkContextOnlyMeta(ctx context.Context) context.Context {
+	if fields := mustFindLogFields(ctx); fields != nil {
+		return context.WithValue(ctx, contextLogFields, fields.clone(true))
 	}
 	return context.WithValue(ctx, contextLogFields, newFieldsContainer())
 }
@@ -118,14 +125,18 @@ func (fc *fieldsContainer) findField(key string) Field {
 	return &field{}
 }
 
-func (fc *fieldsContainer) clone() *fieldsContainer {
+func (fc *fieldsContainer) clone(onlyMeta bool) *fieldsContainer {
 	fc.mtx.RLock()
 	defer fc.mtx.RUnlock()
 
 	copied := newFieldsContainer()
-	for f := fc.entry.Front(); f != nil; f = f.Next() {
-		f1 := f.Value.(Field)
-		copied.addFields(f1)
+	for e := fc.entry.Front(); e != nil; e = e.Next() {
+		f := e.Value.(Field)
+		_, ok := metaFields[f.Key()]
+		if onlyMeta && !ok {
+			continue
+		}
+		copied.addFields(f)
 	}
 	return copied
 }

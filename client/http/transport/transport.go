@@ -56,7 +56,7 @@ func (r *RPC) Send(ctx context.Context, request client.Request, response client.
 		return
 	}
 
-	ctx = logger.ForkContext(ctx)
+	ctx = logger.ForkContextOnlyMeta(ctx)
 
 	serviceName := request.GetServiceName()
 
