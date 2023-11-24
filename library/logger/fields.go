@@ -2,7 +2,6 @@ package logger
 
 import (
 	"net/http"
-	"time"
 )
 
 const (
@@ -20,13 +19,15 @@ const (
 
 const (
 	AppName        = "app_name"
-	Module         = "module"
-	ServiceName    = "service_name"
 	LogID          = "log_id"
 	TraceID        = "trace_id"
+	Module         = "module"
+	ServiceName    = "service_name"
 	RequestHeader  = "request_header"
 	ResponseHeader = "response_header"
 	Method         = "method"
+	API            = "api"
+	URI            = "uri"
 	Request        = "request"
 	Response       = "response"
 	Code           = "code"
@@ -34,34 +35,36 @@ const (
 	ClientPort     = "client_port"
 	ServerIP       = "server_ip"
 	ServerPort     = "server_port"
-	API            = "api"
-	URI            = "uri"
 	Cost           = "cost"
-	Timeout        = "timeout"
-	Trace          = "trace"
 )
 
 type Fields struct {
-	AppName        string        `json:"app_name"`
-	Module         string        `json:"module"`
-	ServiceName    string        `json:"service_name"`
-	LogID          string        `json:"log_id"`
-	TraceID        string        `json:"trace_id"`
-	RequestHeader  http.Header   `json:"request_header"`
-	ResponseHeader http.Header   `json:"response_header"`
-	Method         string        `json:"method"`
-	Request        interface{}   `json:"request"`
-	Response       interface{}   `json:"response"`
-	Code           int           `json:"code"`
-	ClientIP       string        `json:"client_ip"`
-	ClientPort     int           `json:"client_port"`
-	ServerIP       string        `json:"server_ip"`
-	ServerPort     int           `json:"server_port"`
-	API            string        `json:"api"`
-	URI            string        `json:"uri"`
-	Cost           int64         `json:"cost"`
-	Timeout        time.Duration `json:"timeout"`
-	Trace          string        `json:"trace"`
+	AppName        string      `json:"app_name"`
+	LogID          string      `json:"log_id"`
+	TraceID        string      `json:"trace_id"`
+	Module         string      `json:"module"`
+	ServiceName    string      `json:"service_name"`
+	RequestHeader  http.Header `json:"request_header"`
+	ResponseHeader http.Header `json:"response_header"`
+	Method         string      `json:"method"`
+	API            string      `json:"api"`
+	URI            string      `json:"uri"`
+	Request        interface{} `json:"request"`
+	Response       interface{} `json:"response"`
+	Code           int         `json:"code"`
+	ClientIP       string      `json:"client_ip"`
+	ClientPort     int         `json:"client_port"`
+	ServerIP       string      `json:"server_ip"`
+	ServerPort     int         `json:"server_port"`
+	Cost           int64       `json:"cost"`
+	Error          string      `json:"error"`
+	Stack          string      `json:"stack"`
+}
+
+var metaFields = map[string]struct{}{
+	"app_name": {},
+	"log_id":   {},
+	"trace_id": {},
 }
 
 type Field interface {
@@ -87,5 +90,5 @@ func Reflect(key string, value any) Field {
 }
 
 func Error(err error) Field {
-	return &field{key: "error", value: err}
+	return &field{key: "error", value: err.Error()}
 }
