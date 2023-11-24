@@ -23,17 +23,11 @@ func Limiter(maxBurstSize int, l logger.Logger) gin.HandlerFunc {
 
 		logger.AddField(ctx,
 			logger.Reflect(logger.Code, http.StatusInternalServerError),
-			logger.Reflect(logger.Response, map[string]interface{}{
-				"code":   http.StatusServiceUnavailable,
-				"toast":  "服务暂时不可用",
-				"data":   "",
-				"errmsg": "服务暂时不可用",
-			}),
 		)
 		c.Request = c.Request.WithContext(ctx)
 
 		l.Error(ctx, "limiter") // 这里不能打Fatal和Panic，否则程序会退出
-		response.ResponseJSON(c, http.StatusServiceUnavailable, nil, response.WrapToast(http.StatusText(http.StatusServiceUnavailable)))
+		response.ResponseJSON(c, http.StatusServiceUnavailable, response.WrapToast(http.StatusText(http.StatusServiceUnavailable)))
 		c.AbortWithStatus(http.StatusInternalServerError)
 	}
 }

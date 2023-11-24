@@ -7,6 +7,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 	"go.opentelemetry.io/otel/trace"
 
+	lc "github.com/air-go/rpc/library/context"
 	"github.com/air-go/rpc/library/logger"
 	jaeger "github.com/air-go/rpc/library/opentracing/http"
 	libraryOtel "github.com/air-go/rpc/library/otel"
@@ -44,7 +45,7 @@ func (*OpentelemetryBeforePlugin) Handle(ctx context.Context, req *http.Request)
 		return ctx, nil
 	}
 
-	logID := logger.ValueLogID(ctx)
+	logID := lc.ValueLogID(ctx)
 	req.Header.Set(logger.LogHeader, logID)
 
 	libraryOtel.InjectHTTPBaggage(ctx, req.Header)

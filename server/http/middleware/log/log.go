@@ -15,6 +15,7 @@ import (
 	"github.com/why444216978/go-util/sys"
 
 	"github.com/air-go/rpc/library/app"
+	lc "github.com/air-go/rpc/library/context"
 	"github.com/air-go/rpc/library/logger"
 	"github.com/air-go/rpc/server/http/util"
 )
@@ -28,7 +29,7 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 		serverIP, _ := sys.LocalIP()
 
 		logID := logger.ExtractLogID(c.Request)
-		ctx = logger.WithLogID(ctx, logID)
+		ctx = lc.WithLogID(ctx, logID)
 
 		// req := logger.GetRequestBody(c.Request)
 		req, _ := httputil.DumpRequest(c.Request, true)
@@ -39,7 +40,7 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 		// Next之前这里需要写入ctx，否则会丢失log、断开trace
 		logger.AddField(ctx,
 			logger.Reflect(logger.LogID, logID),
-			logger.Reflect(logger.TraceID, logger.ValueTraceID(ctx)),
+			logger.Reflect(logger.TraceID, lc.ValueTraceID(ctx)),
 			logger.Reflect(logger.RequestHeader, c.Request.Header),
 			logger.Reflect(logger.Method, c.Request.Method),
 			logger.Reflect(logger.Request, base64.StdEncoding.EncodeToString(req)),

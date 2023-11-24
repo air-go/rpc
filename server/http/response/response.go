@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/why444216978/go-util/assert"
 
-	"github.com/air-go/rpc/library/logger"
+	lc "github.com/air-go/rpc/library/context"
 )
 
 // Code is response code
@@ -52,8 +52,8 @@ func ResponseJSON(c *gin.Context, code Code, data ...interface{}) {
 		Toast:   m,
 		ErrMsg:  m,
 		Data:    struct{}{},
-		LogID:   logger.ValueLogID(c.Request.Context()),
-		TraceID: logger.ValueTraceID(c.Request.Context()),
+		LogID:   lc.ValueLogID(c.Request.Context()),
+		TraceID: lc.ValueTraceID(c.Request.Context()),
 	}
 
 	defer func() {

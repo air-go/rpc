@@ -13,6 +13,7 @@ import (
 	gormLogger "gorm.io/gorm/logger"
 
 	"github.com/air-go/rpc/library/app"
+	lc "github.com/air-go/rpc/library/context"
 	"github.com/air-go/rpc/library/logger"
 	zapLogger "github.com/air-go/rpc/library/logger/zap"
 )
@@ -122,8 +123,8 @@ func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (stri
 	}
 
 	f := []zapcore.Field{
-		zap.String(logger.LogID, logger.ValueLogID(ctx)),
-		zap.String(logger.TraceID, logger.ValueTraceID(ctx)),
+		zap.String(logger.LogID, lc.ValueLogID(ctx)),
+		zap.String(logger.TraceID, lc.ValueTraceID(ctx)),
 		zap.Int64(logger.Cost, elapsed.Milliseconds()),
 		zap.String(logger.Request, sql),
 		zap.Int64(logger.Response, rows),

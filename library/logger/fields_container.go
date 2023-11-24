@@ -4,27 +4,29 @@ import (
 	"container/list"
 	"context"
 	"sync"
+
+	lc "github.com/air-go/rpc/library/context"
 )
 
 func InitFieldsContainer(ctx context.Context) context.Context {
 	if f := findLogFields(ctx); f != nil {
 		return ctx
 	}
-	return context.WithValue(ctx, contextLogFields, newFieldsContainer())
+	return lc.WithLogContainer(ctx, newFieldsContainer())
 }
 
 func ForkContext(ctx context.Context) context.Context {
 	if fields := mustFindLogFields(ctx); fields != nil {
-		return context.WithValue(ctx, contextLogFields, fields.clone(false))
+		return lc.WithLogContainer(ctx, fields.clone(false))
 	}
-	return context.WithValue(ctx, contextLogFields, newFieldsContainer())
+	return lc.WithLogContainer(ctx, newFieldsContainer())
 }
 
 func ForkContextOnlyMeta(ctx context.Context) context.Context {
 	if fields := mustFindLogFields(ctx); fields != nil {
-		return context.WithValue(ctx, contextLogFields, fields.clone(true))
+		return lc.WithLogContainer(ctx, fields.clone(true))
 	}
-	return context.WithValue(ctx, contextLogFields, newFieldsContainer())
+	return lc.WithLogContainer(ctx, newFieldsContainer())
 }
 
 func ExtractFields(ctx context.Context) []Field {
@@ -66,7 +68,8 @@ func findLogFields(ctx context.Context) (s *fieldsContainer) {
 	if ctx == nil {
 		return nil
 	}
-	if v := ctx.Value(contextLogFields); v != nil {
+
+	if v := lc.ValueLogContainer(ctx); v != nil {
 		if fm, ok := v.(*fieldsContainer); ok {
 			return fm
 		}

@@ -5,10 +5,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/air-go/rpc/library/logger"
 	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+
+	lc "github.com/air-go/rpc/library/context"
 )
 
 func TestNewJaegerTracer(t *testing.T) {
@@ -28,7 +29,7 @@ func TestSetBasicTags(t *testing.T) {
 			tracer := mocktracer.New()
 			span := tracer.StartSpan("test")
 
-			ctx := logger.WithLogID(context.Background(), "logid")
+			ctx := lc.WithLogID(context.Background(), "logid")
 			SetBasicTags(ctx, span)
 
 			mockSpan := span.(*mocktracer.MockSpan)
@@ -45,7 +46,7 @@ func TestSetLogID(t *testing.T) {
 			tracer := mocktracer.New()
 			span := tracer.StartSpan("test")
 
-			ctx := logger.WithLogID(context.Background(), "logid")
+			ctx := lc.WithLogID(context.Background(), "logid")
 			SetLogID(ctx, span)
 
 			mockSpan := span.(*mocktracer.MockSpan)
@@ -60,7 +61,7 @@ func TestSetTraceTag(t *testing.T) {
 			tracer := mocktracer.New()
 			span := tracer.StartSpan("test")
 
-			ctx := logger.WithLogID(context.Background(), "logid")
+			ctx := lc.WithLogID(context.Background(), "logid")
 			SetTraceTag(ctx, span)
 
 			mockSpan := span.(*mocktracer.MockSpan)
