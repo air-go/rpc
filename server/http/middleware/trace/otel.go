@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/air-go/rpc/library/app"
+	lc "github.com/air-go/rpc/library/context"
 	"github.com/air-go/rpc/library/logger"
 	libraryOtel "github.com/air-go/rpc/library/otel"
 )
@@ -38,7 +39,7 @@ func OpentelemetryMiddleware() gin.HandlerFunc {
 		traceID := libraryOtel.TraceID(span)
 		spanID := libraryOtel.SpanID(span)
 
-		ctx = logger.WithTraceID(ctx, traceID)
+		ctx = lc.WithTraceID(ctx, traceID)
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
@@ -52,7 +53,7 @@ func OpentelemetryMiddleware() gin.HandlerFunc {
 		resp, _ := conversion.JsonEncode(response.Value())
 
 		span.AddEvent("request", trace.WithAttributes([]attribute.KeyValue{
-			libraryOtel.AttributeLogID.String(logger.ValueLogID(ctx)),
+			libraryOtel.AttributeLogID.String(lc.ValueLogID(ctx)),
 			libraryOtel.AttributeRequest.String(req),
 			libraryOtel.AttributeResponse.String(resp),
 		}...))

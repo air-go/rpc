@@ -7,6 +7,8 @@ import (
 	"net/http"
 
 	"github.com/why444216978/go-util/snowflake"
+
+	lc "github.com/air-go/rpc/library/context"
 )
 
 // ExtractLogID init log id
@@ -23,7 +25,7 @@ func ExtractLogID(req *http.Request) string {
 }
 
 func SetLogID(ctx context.Context, header http.Header) (err error) {
-	logID := ValueLogID(ctx)
+	logID := lc.ValueLogID(ctx)
 	if logID == "" {
 		logID = snowflake.Generate().String()
 	}

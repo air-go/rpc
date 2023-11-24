@@ -4,11 +4,12 @@ import (
 	"context"
 	"io"
 
-	"github.com/air-go/rpc/library/logger"
 	"github.com/opentracing/opentracing-go"
 	opentracingLog "github.com/opentracing/opentracing-go/log"
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/config"
+
+	lc "github.com/air-go/rpc/library/context"
 )
 
 const (
@@ -60,7 +61,7 @@ func SetBasicTags(ctx context.Context, span opentracing.Span) {
 }
 
 func SetLogID(ctx context.Context, span opentracing.Span) {
-	span.SetTag(tagLogID, logger.ValueLogID(ctx))
+	span.SetTag(tagLogID, lc.ValueLogID(ctx))
 }
 
 func SetTraceTag(ctx context.Context, span opentracing.Span) {

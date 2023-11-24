@@ -1,4 +1,4 @@
-package logger
+package context
 
 import (
 	"context"
@@ -8,9 +8,9 @@ type contextKey uint64
 
 const (
 	contextLogID contextKey = iota
-	contextLogFields
+	contextLogContainer
 	contextTraceID
-	ContextRPC
+	contextResponseWriter
 )
 
 // WithLogID inject log id to context
@@ -41,4 +41,24 @@ func ValueTraceID(ctx context.Context) string {
 		return ""
 	}
 	return logID
+}
+
+// WithLogContainer inject log container to context
+func WithLogContainer(ctx context.Context, val interface{}) context.Context {
+	return context.WithValue(ctx, contextLogContainer, val)
+}
+
+// ValueLogContainer extract log container from context
+func ValueLogContainer(ctx context.Context) any {
+	return ctx.Value(contextLogContainer)
+}
+
+// WithResponseWriter inject response write to context
+func WithResponseWriter(ctx context.Context, val interface{}) context.Context {
+	return context.WithValue(ctx, contextResponseWriter, val)
+}
+
+// ValueResponseWriter extract response write from context
+func ValueResponseWriter(ctx context.Context) interface{} {
+	return ctx.Value(contextResponseWriter)
 }

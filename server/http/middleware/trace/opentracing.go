@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/why444216978/go-util/assert"
 
+	lc "github.com/air-go/rpc/library/context"
 	"github.com/air-go/rpc/library/logger"
 	"github.com/air-go/rpc/library/opentracing"
 	jaegerHTTP "github.com/air-go/rpc/library/opentracing/http"
@@ -26,7 +27,7 @@ func OpentracingMiddleware() gin.HandlerFunc {
 		if !assert.IsNil(span) {
 			defer span.Finish()
 		}
-		ctx = logger.WithTraceID(ctx, traceID)
+		ctx = lc.WithTraceID(ctx, traceID)
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
