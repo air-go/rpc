@@ -1,10 +1,8 @@
 package log
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"net/http"
 	"net/http/httputil"
 	"sync/atomic"
@@ -17,7 +15,6 @@ import (
 	"github.com/air-go/rpc/library/app"
 	lc "github.com/air-go/rpc/library/context"
 	"github.com/air-go/rpc/library/logger"
-	"github.com/air-go/rpc/server/http/util"
 )
 
 func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
@@ -33,9 +30,6 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 
 		// req := logger.GetRequestBody(c.Request)
 		req, _ := httputil.DumpRequest(c.Request, true)
-
-		responseWriter := &util.BodyWriter{Body: bytes.NewBuffer(nil), ResponseWriter: c.Writer}
-		c.Writer = responseWriter
 
 		// Next之前这里需要写入ctx，否则会丢失log、断开trace
 		logger.AddField(ctx,
@@ -60,13 +54,6 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 			atomic.StoreInt32(&doneFlag, 1)
 
 			ctx := c.Request.Context()
-
-			resp := responseWriter.Body.Bytes()
-			if responseWriter.Body.Len() > 0 {
-				logResponse := map[string]interface{}{}
-				_ = json.Unmarshal(resp, &logResponse)
-				logger.AddField(ctx, logger.Reflect(logger.Response, logResponse))
-			}
 
 			logger.AddField(ctx,
 				logger.Reflect(logger.Code, c.Writer.Status()),
