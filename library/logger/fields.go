@@ -36,6 +36,7 @@ const (
 	ServerIP       = "server_ip"
 	ServerPort     = "server_port"
 	Cost           = "cost"
+	Errno          = "errno"
 )
 
 type Fields struct {

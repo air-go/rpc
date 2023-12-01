@@ -10,32 +10,32 @@ import (
 	lc "github.com/air-go/rpc/library/context"
 )
 
-// Code is response code
-type Code int
+// Errno is response errno
+type Errno int
 
 const (
-	CodeSuccess     Code = 0
-	CodeParams      Code = http.StatusBadRequest
-	CodeForbidden   Code = http.StatusForbidden
-	CodeNotFound    Code = http.StatusNotFound
-	CodeServer      Code = http.StatusInternalServerError
-	CodeUnavailable Code = http.StatusServiceUnavailable
-	CodeTimeout     Code = http.StatusGatewayTimeout
+	ErrnoSuccess     Errno = 0
+	ErrnoParams      Errno = http.StatusBadRequest
+	ErrnoForbidden   Errno = http.StatusForbidden
+	ErrnoNotFound    Errno = http.StatusNotFound
+	ErrnoServer      Errno = http.StatusInternalServerError
+	ErrnoUnavailable Errno = http.StatusServiceUnavailable
+	ErrnoTimeout     Errno = http.StatusGatewayTimeout
 )
 
-var codeToast = map[Code]string{
-	CodeSuccess:     "success",
-	CodeParams:      "参数错误",
-	CodeForbidden:   "暂无权限",
-	CodeNotFound:    "资源不存在",
-	CodeUnavailable: "服务器暂时不可用",
-	CodeTimeout:     "请求超时",
-	CodeServer:      "服务器错误",
+var codeToast = map[Errno]string{
+	ErrnoSuccess:     "success",
+	ErrnoParams:      "参数错误",
+	ErrnoForbidden:   "暂无权限",
+	ErrnoNotFound:    "资源不存在",
+	ErrnoUnavailable: "服务器暂时不可用",
+	ErrnoTimeout:     "请求超时",
+	ErrnoServer:      "服务器错误",
 }
 
-// response is json response struct
-type response struct {
-	Code    Code        `json:"code"`
+// Response is json response struct
+type Response struct {
+	Errno   Errno       `json:"code"`
 	Toast   string      `json:"toast"`
 	ErrMsg  string      `json:"errmsg"`
 	Data    interface{} `json:"data"`
@@ -45,10 +45,10 @@ type response struct {
 
 // ResponseJSON serializes the given struct as JSON into the response body.
 // It also sets the Content-Type as "application/json".
-func ResponseJSON(c *gin.Context, code Code, data ...interface{}) {
-	m := codeToast[code]
-	resp := response{
-		Code:    code,
+func ResponseJSON(c *gin.Context, errno Errno, data ...interface{}) {
+	m := codeToast[errno]
+	resp := Response{
+		Errno:   errno,
 		Toast:   m,
 		ErrMsg:  m,
 		Data:    struct{}{},
