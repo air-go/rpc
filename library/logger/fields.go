@@ -31,7 +31,7 @@ const (
 	URI            = "uri"
 	Request        = "request"
 	Response       = "response"
-	Code           = "code"
+	Status         = "status"
 	ClientIP       = "client_ip"
 	ClientPort     = "client_port"
 	ServerIP       = "server_ip"

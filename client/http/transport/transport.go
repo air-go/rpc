@@ -236,7 +236,7 @@ func (r *RPC) send(ctx context.Context, cli *http.Client, service servicer.Servi
 	// This don't close body !!!
 
 	logger.AddField(ctx, logger.Reflect(logger.ResponseHeader, resp.Header))
-	logger.AddField(ctx, logger.Reflect(logger.Code, resp.StatusCode))
+	logger.AddField(ctx, logger.Reflect(logger.Status, resp.StatusCode))
 
 	if resp.StatusCode != http.StatusOK {
 		err = fmt.Errorf("http code is %d", resp.StatusCode)

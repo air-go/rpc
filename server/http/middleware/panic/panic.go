@@ -21,7 +21,7 @@ func PanicMiddleware(l logger.Logger) gin.HandlerFunc {
 				logger.AddField(ctx,
 					logger.Error(se.Error()),
 					logger.Stack(se.Stack()),
-					logger.Reflect(logger.Code, http.StatusInternalServerError),
+					logger.Reflect(logger.Status, http.StatusInternalServerError),
 				)
 				c.Request = c.Request.WithContext(ctx)
 

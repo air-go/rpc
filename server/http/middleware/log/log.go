@@ -56,7 +56,7 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 			ctx := c.Request.Context()
 
 			logger.AddField(ctx,
-				logger.Reflect(logger.Code, c.Writer.Status()),
+				logger.Reflect(logger.Status, c.Writer.Status()),
 				logger.Reflect(logger.Cost, time.Since(start).Milliseconds()))
 
 			c.Request = c.Request.WithContext(ctx)
@@ -72,15 +72,15 @@ func LoggerMiddleware(l logger.Logger) gin.HandlerFunc {
 					return
 				}
 
-				code := 499
+				status := 499
 				err := ctx.Err()
 
 				if errors.Is(err, context.DeadlineExceeded) {
-					code = http.StatusGatewayTimeout
+					status = http.StatusGatewayTimeout
 				}
 
 				logger.AddField(ctx,
-					logger.Reflect(logger.Code, code),
+					logger.Reflect(logger.Status, status),
 					logger.Reflect(logger.Cost, time.Since(start).Milliseconds()),
 				)
 

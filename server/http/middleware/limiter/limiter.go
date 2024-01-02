@@ -22,7 +22,7 @@ func Limiter(maxBurstSize int, l logger.Logger) gin.HandlerFunc {
 		ctx := logger.InitFieldsContainer(c.Request.Context())
 
 		logger.AddField(ctx,
-			logger.Reflect(logger.Code, http.StatusInternalServerError),
+			logger.Reflect(logger.Status, http.StatusInternalServerError),
 		)
 		c.Request = c.Request.WithContext(ctx)
 
