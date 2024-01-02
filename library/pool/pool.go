@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/why444216978/go-util/assert"
-	panicErr "github.com/why444216978/go-util/panic"
+	uruntime "github.com/why444216978/go-util/runtime"
 )
 
 type Pool interface {
@@ -132,7 +132,7 @@ func (p *connPool) handleNew(ctx context.Context) (conn Conn, err error) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = panicErr.NewPanicError(r)
+			err = uruntime.WrapStackError(r)
 		}
 	}()
 

@@ -9,6 +9,8 @@ type Logger interface {
 	Info(ctx context.Context, msg string, fields ...Field)
 	Warn(ctx context.Context, msg string, fields ...Field)
 	Error(ctx context.Context, msg string, fields ...Field)
+	DPanic(ctx context.Context, msg string, fields ...Field)
+	Panic(ctx context.Context, msg string, fields ...Field)
 	Fatal(ctx context.Context, msg string, fields ...Field)
 	GetLevel() Level
 	Close() error

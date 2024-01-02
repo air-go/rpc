@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	panicErr "github.com/why444216978/go-util/panic"
+	uruntime "github.com/why444216978/go-util/runtime"
 )
 
 // CacheData is cache data struct
@@ -34,7 +34,7 @@ type Cacher interface {
 func HandleLoad(ctx context.Context, f LoadFunc, data interface{}) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = panicErr.NewPanicError(r)
+			err = uruntime.WrapStackError(r)
 		}
 	}()
 	err = f(ctx, data)

@@ -35,7 +35,7 @@ var codeToast = map[Errno]string{
 
 // Response is json response struct
 type Response struct {
-	Errno   Errno       `json:"code"`
+	Errno   Errno       `json:"errno"`
 	Toast   string      `json:"toast"`
 	ErrMsg  string      `json:"errmsg"`
 	Data    interface{} `json:"data"`
