@@ -160,7 +160,6 @@ func (rl *RedisLogger) fields(ctx context.Context, isPipeline bool, cmds []redis
 		logger.Reflect(logger.Method, method),
 		logger.Reflect(logger.Request, args),
 		logger.Reflect(logger.Response, response),
-		logger.Reflect(logger.Code, 0),
 		logger.Reflect(logger.ClientIP, app.LocalIP()),
 		logger.Reflect(logger.ClientPort, app.Port()),
 		logger.Reflect(logger.ServerIP, rl.config.Host),

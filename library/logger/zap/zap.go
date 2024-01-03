@@ -180,6 +180,14 @@ func (l *ZapLogger) Error(ctx context.Context, msg string, fields ...logger.Fiel
 	l.Logger.Error(msg, l.extractFields(ctx, fields...)...)
 }
 
+func (l *ZapLogger) DPanic(ctx context.Context, msg string, fields ...logger.Field) {
+	l.Logger.DPanic(msg, l.extractFields(ctx, fields...)...)
+}
+
+func (l *ZapLogger) Panic(ctx context.Context, msg string, fields ...logger.Field) {
+	l.Logger.Panic(msg, l.extractFields(ctx, fields...)...)
+}
+
 func (l *ZapLogger) Fatal(ctx context.Context, msg string, fields ...logger.Field) {
 	l.Logger.Fatal(msg, l.extractFields(ctx, fields...)...)
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 	"github.com/why444216978/go-util/assert"
-	panicErr "github.com/why444216978/go-util/panic"
+	uruntime "github.com/why444216978/go-util/runtime"
 
 	"github.com/air-go/rpc/library/logger"
 	"github.com/air-go/rpc/library/logger/zap"
@@ -249,7 +249,7 @@ func (cli *Client) Consume(params interface{}) (err error) {
 			var err error
 			defer func() {
 				if r := recover(); r != nil {
-					err := panicErr.NewPanicError(r)
+					err := uruntime.WrapStackError(r)
 					cli.opts.logger.Error(ctx, "rabbitMQConsumeRecover", logger.Reflect("error", err))
 					return
 				}

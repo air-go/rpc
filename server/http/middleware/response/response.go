@@ -18,13 +18,14 @@ type BodyWriter struct {
 
 // Write for writing responses body
 func (w BodyWriter) Write(b []byte) (int, error) {
+	// TODO Implement injection body processing method.
 	w.Body.Write(b)
 	return w.ResponseWriter.Write(b)
 }
 
 // ResponseMiddleware return a gin.HandlerFunc.
 // The code after next takes effect in the reverse order.
-// So must register this middleware at first.
+// So must register this middleware before use BodyWriter.
 func ResponseMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bw := &BodyWriter{Body: bytes.NewBuffer(nil), ResponseWriter: c.Writer}

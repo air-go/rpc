@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -30,7 +31,7 @@ const (
 	URI            = "uri"
 	Request        = "request"
 	Response       = "response"
-	Code           = "code"
+	Status         = "status"
 	ClientIP       = "client_ip"
 	ClientPort     = "client_port"
 	ServerIP       = "server_ip"
@@ -90,6 +91,17 @@ func Reflect(key string, value any) Field {
 	return &field{key: key, value: value}
 }
 
-func Error(err error) Field {
-	return &field{key: "error", value: err.Error()}
+func Error(err any) Field {
+	switch e := err.(type) {
+	case error:
+		return &field{key: "error", value: e.Error()}
+	case string:
+		return &field{key: "error", value: e}
+	default:
+		return &field{key: "error", value: fmt.Sprintf("%v", e)}
+	}
+}
+
+func Stack(s string) Field {
+	return &field{key: "stack", value: s}
 }
