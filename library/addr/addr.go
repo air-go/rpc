@@ -16,6 +16,8 @@ type TCPAddr struct {
 	Port int
 }
 
+var _ net.Addr = (*TCPAddr)(nil)
+
 func (a *TCPAddr) Network() string {
 	return "tcp"
 }
