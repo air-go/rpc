@@ -2,20 +2,16 @@ package leakybucket
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/air-go/rpc/library/limiter"
 	"github.com/benbjohnson/clock"
 	"github.com/go-redis/redis/v8"
 	"github.com/why444216978/go-util/assert"
 )
-
-type LeakyBucket interface {
-	Allow(ctx context.Context, key string, requestCount int) (bool, error)
-	SetRate(rate int)
-	SetVolume(burst int)
-}
 
 var script = `local key           = KEYS[1] --键名，格式hash
 local volume        = tonumber(KEYS[2]) --桶容量
@@ -24,9 +20,9 @@ local request_count = tonumber(KEYS[4]) --请求的增长数
 local current_time  = tonumber(KEYS[5]) --当前时间戳
 local ttl = math.floor((volume/rate)*2) --有效期
 
---容量小于流出速率, 只需要拦住1s的请求即可
-if ttl < 1 then
-	ttl = 1
+--最低有效期60s，避免请求处理时过期导致异常
+if ttl < 60 then
+	ttl = 60
 end
 
 --不存在则设置
@@ -34,12 +30,17 @@ if tonumber(redis.call('exists', key)) == 0 then
     redis.call('hset', key, 'last_time', current_time)
     redis.call('hset', key, 'count', 0)
 end
+--存在马上续期，避免下面处理时过期异常
+redis.call("expire", key, ttl)
  
 --延迟漏出：（当前时间 - 上次时间）* 每秒流出速率
 local last_time     = tonumber(redis.call('hget', key, 'last_time'))
 local current_count = tonumber(redis.call('hget', key, 'count'))
 local leak_count    = (current_time - last_time) * rate
-local remain_count  = current_count + request_count - leak_count
+if leak_count > current_count then
+    leak_count = current_count
+end
+local remain_count  = current_count - leak_count + request_count
 if remain_count <= 0 then
     remain_count = 0 
 end
@@ -58,75 +59,135 @@ redis.call('hset', key, 'count', remain_count)
  
 return 1`
 
-type option struct {
-	clock clock.Clock
+type options struct {
+	defaultVolume int
+	defaultRate   int
+	clock         clock.Clock
 }
 
-type Option func(o *option)
+type OptionFunc func(o *options)
 
-func WithClock(clock clock.Clock) Option {
-	return func(o *option) { o.clock = clock }
+func WithClock(clock clock.Clock) OptionFunc {
+	return func(o *options) { o.clock = clock }
 }
 
-func defaultOption() *option {
-	return &option{}
+func WithVolume(volume int) OptionFunc {
+	return func(o *options) { o.defaultVolume = volume }
+}
+
+func defaultOptions() *options {
+	return &options{
+		defaultVolume: 3000,
+		defaultRate:   1,
+	}
 }
 
 type leakyBucket struct {
-	opts   *option
-	mu     sync.RWMutex
-	volume int
-	rate   int
-	client *redis.Client
+	*options
+	getClient func() *redis.Client
+	limiters  sync.Map
 }
 
-func NewLeakyBucket(rate, volume int, client *redis.Client, opts ...Option) LeakyBucket {
-	opt := defaultOption()
+var _ limiter.Limiter = (*leakyBucket)(nil)
+
+func NewLeakyBucket(getClient func() *redis.Client, opts ...OptionFunc) (*leakyBucket, error) {
+	if assert.IsNil(getClient) {
+		return nil, errors.New("distributed sliding log limiter getClient is nil")
+	}
+
+	opt := defaultOptions()
 	for _, o := range opts {
 		o(opt)
 	}
 
 	return &leakyBucket{
-		opts:   opt,
-		client: client,
-		rate:   rate,
+		options:   opt,
+		getClient: getClient,
+	}, nil
+}
+
+func (lb *leakyBucket) Allow(ctx context.Context, key string, opts ...limiter.AllowOptionFunc) (bool, error) {
+	opt := &limiter.AllowOptions{}
+	for _, o := range opts {
+		o(opt)
+	}
+
+	count := 1
+	if opt.Count > 0 {
+		count = opt.Count
+	}
+
+	return lb.getLimiter(key).allow(ctx, lb.now(), count, lb.getClient)
+}
+
+func (lb *leakyBucket) SetVolume(ctx context.Context, key string, volume int) {
+	lb.getLimiter(key).setVolume(volume)
+}
+
+func (lb *leakyBucket) SetRate(ctx context.Context, key string, rate int) {
+	lb.getLimiter(key).setRate(rate)
+}
+
+func (lb *leakyBucket) getLimiter(key string) *keyLimiter {
+	l, ok := lb.limiters.Load(key)
+	if ok {
+		return l.(*keyLimiter)
+	}
+
+	lim := newKeyLimiter(key, lb.defaultVolume, lb.defaultRate)
+	lb.limiters.Store(key, lim)
+	return lim
+}
+
+func (lb *leakyBucket) now() time.Time {
+	if assert.IsNil(lb.clock) {
+		return time.Now()
+	}
+	return lb.clock.Now()
+}
+
+type keyLimiter struct {
+	mu     sync.RWMutex
+	key    string
+	volume int
+	rate   int
+}
+
+func newKeyLimiter(key string, volume, rate int) *keyLimiter {
+	return &keyLimiter{
+		key:    key,
 		volume: volume,
+		rate:   rate,
 	}
 }
 
-func (lb *leakyBucket) Allow(ctx context.Context, key string, requestCount int) (ok bool, err error) {
-	lb.mu.RLock()
-	rate := lb.rate
-	volume := lb.volume
-	lb.mu.RUnlock()
+func (l *keyLimiter) allow(ctx context.Context, now time.Time, n int, getClient func() *redis.Client) (bool, error) {
+	l.mu.RLock()
+	volume := l.volume
+	rate := l.rate
+	l.mu.RUnlock()
 
-	res, err := lb.client.Do(ctx, "EVAL", script, 5, key, volume, rate, requestCount, lb.now().Unix()).Result()
+	res, err := getClient().Do(ctx, "EVAL", script, 5, l.key,
+		volume, rate, n, now.Unix()).Result()
 	if err != nil {
-		return
+		return false, err
 	}
 
 	if fmt.Sprint(res) == "1" {
 		return true, nil
 	}
 
-	return
+	return false, nil
 }
 
-func (lb *leakyBucket) SetRate(rate int) {
-	lb.mu.Lock()
-	lb.rate = rate
-	lb.mu.Unlock()
+func (l *keyLimiter) setRate(rate int) {
+	l.mu.Lock()
+	l.rate = rate
+	l.mu.Unlock()
 }
 
-func (lb *leakyBucket) SetVolume(burst int) {
-	lb.mu.Lock()
-	lb.volume = burst
-	lb.mu.Unlock()
-}
-
-func (sl *leakyBucket) now() time.Time {
-	if assert.IsNil(sl.opts.clock) {
-		return time.Now()
-	}
-	return sl.opts.clock.Now()
+func (l *keyLimiter) setVolume(volume int) {
+	l.mu.Lock()
+	l.volume = volume
+	l.mu.Unlock()
 }

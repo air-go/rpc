@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/benbjohnson/clock"
+	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/air-go/rpc/mock/tools/miniredis"
@@ -20,7 +21,13 @@ func TestSlidingLog(t *testing.T) {
 		key := "sliding_log_1"
 		c := clock.NewMock()
 		rc := miniredis.NewClient()
-		sl := NewSlidingLog(1, time.Second*3, rc, WithClock(c))
+		sl, _ := NewSlidingLog(func() *redis.Client {
+			return rc
+		}, WithClock(c),
+			WithKeyTTL(time.Minute),
+			WithLimit(1),
+			WithWindow(time.Second*3),
+		)
 
 		c.Set(time.Now())
 		ok, err := sl.Allow(ctx, key)
@@ -55,7 +62,13 @@ func TestSlidingLog(t *testing.T) {
 		key := "sliding_log_2"
 		c := clock.NewMock()
 		rc := miniredis.NewClient()
-		sl := NewSlidingLog(1, time.Second*3, rc, WithClock(c))
+		sl, _ := NewSlidingLog(func() *redis.Client {
+			return rc
+		}, WithClock(c),
+			WithKeyTTL(time.Minute),
+			WithLimit(1),
+			WithWindow(time.Second*3),
+		)
 
 		c.Set(time.Now())
 		ok, err := sl.Allow(ctx, key)
@@ -71,7 +84,7 @@ func TestSlidingLog(t *testing.T) {
 		assert.Equal(t, int64(1), count)
 
 		c.Add(time.Second)
-		sl.SetLimit(2)
+		sl.SetLimit(ctx, key, 2)
 		ok, err = sl.Allow(ctx, key)
 		assert.Nil(t, err)
 		assert.Equal(t, true, ok)
@@ -84,7 +97,13 @@ func TestSlidingLog(t *testing.T) {
 		key := "sliding_log_3"
 		c := clock.NewMock()
 		rc := miniredis.NewClient()
-		sl := NewSlidingLog(1, time.Second*3, rc, WithClock(c))
+		sl, _ := NewSlidingLog(func() *redis.Client {
+			return rc
+		}, WithClock(c),
+			WithKeyTTL(time.Minute),
+			WithLimit(1),
+			WithWindow(time.Second*3),
+		)
 
 		c.Set(time.Now())
 		ok, err := sl.Allow(ctx, key)
@@ -100,7 +119,7 @@ func TestSlidingLog(t *testing.T) {
 		count, _ = rc.ZCount(ctx, key, "0", strconv.FormatInt(c.Now().UnixMicro(), 10)).Result()
 		assert.Equal(t, int64(1), count)
 
-		sl.SetWindow(1)
+		sl.SetWindow(ctx, key, time.Second)
 		ok, err = sl.Allow(ctx, key)
 		assert.Nil(t, err)
 		assert.Equal(t, true, ok)

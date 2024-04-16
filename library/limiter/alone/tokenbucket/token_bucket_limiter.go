@@ -2,66 +2,99 @@ package tokenbucket
 
 import (
 	"context"
+	"math"
 	"sync"
+	"time"
 
+	"github.com/benbjohnson/clock"
+	"github.com/why444216978/go-util/assert"
 	"golang.org/x/time/rate"
 
 	"github.com/air-go/rpc/library/limiter"
 )
 
-type tokenBucketEntry struct {
-	allow bool
+type options struct {
+	limit        rate.Limit
+	defaultBurst int
+	clock        clock.Clock
 }
 
-var _ limiter.Entry = (*tokenBucketEntry)(nil)
-
-func (e *tokenBucketEntry) Allow() bool {
-	return e.allow
+func defaultOptions() *options {
+	return &options{
+		limit:        rate.Inf,
+		defaultBurst: math.MaxInt,
+	}
 }
 
-func (e *tokenBucketEntry) Finish() {}
+type OptionFunc func(o *options)
 
-func (e *tokenBucketEntry) Error() error { return nil }
+func WithClock(clock clock.Clock) OptionFunc {
+	return func(o *options) { o.clock = clock }
+}
+
+func WithBurst(burst int) OptionFunc {
+	return func(o *options) { o.defaultBurst = burst }
+}
+
+func WithLimit(limit float64) OptionFunc {
+	return func(o *options) { o.limit = rate.Limit(limit) }
+}
 
 type tokenBucketLimiter struct {
-	limiters sync.Map // key resource name,value *rate.limiter
+	*options
+	limiters sync.Map
 }
 
 var _ limiter.Limiter = (*tokenBucketLimiter)(nil)
 
-func NewLimiter() *tokenBucketLimiter {
+func NewTokenBucket(opts ...OptionFunc) *tokenBucketLimiter {
+	opt := defaultOptions()
+	for _, o := range opts {
+		o(opt)
+	}
+
 	return &tokenBucketLimiter{
+		options:  opt,
 		limiters: sync.Map{},
 	}
 }
 
-func (l *tokenBucketLimiter) Check(ctx context.Context, r limiter.Resource) limiter.Entry {
-	return &tokenBucketEntry{allow: l.getLimiter(r).Allow()}
+func (tb *tokenBucketLimiter) Allow(ctx context.Context, key string, opts ...limiter.AllowOptionFunc) (bool, error) {
+	opt := &limiter.AllowOptions{}
+	for _, o := range opts {
+		o(opt)
+	}
+
+	count := 1
+	if opt.Count > 0 {
+		count = opt.Count
+	}
+
+	return tb.getLimiter(key).AllowN(tb.now(), count), nil
 }
 
-func (l *tokenBucketLimiter) SetLimit(ctx context.Context, r limiter.Resource) {
-	l.getLimiter(r).SetLimit(rate.Limit(r.Limit))
+func (tb *tokenBucketLimiter) SetLimit(ctx context.Context, key string, limit rate.Limit) {
+	tb.getLimiter(key).SetLimit(limit)
 }
 
-func (l *tokenBucketLimiter) SetBurst(ctx context.Context, r limiter.Resource) {
-	l.getLimiter(r).SetBurst(r.Burst)
+func (tb *tokenBucketLimiter) SetBurst(ctx context.Context, key string, burst int) {
+	tb.getLimiter(key).SetBurst(burst)
 }
 
-func (l *tokenBucketLimiter) SetWindow(ctx context.Context, r limiter.Resource) {}
-
-func (l *tokenBucketLimiter) getLimiter(r limiter.Resource) (lim *rate.Limiter) {
-	val, ok := l.limiters.Load(r.Name)
+func (tb *tokenBucketLimiter) getLimiter(key string) *rate.Limiter {
+	val, ok := tb.limiters.Load(key)
 	if !ok {
-		lim = rate.NewLimiter(rate.Limit(r.Limit), r.Burst)
-		l.limiters.Store(r.Name, lim)
-		return
+		l := rate.NewLimiter(tb.limit, tb.defaultBurst)
+		tb.limiters.Store(key, l)
+		return l
 	}
 
-	if lim, ok = val.(*rate.Limiter); !ok {
-		lim = rate.NewLimiter(rate.Limit(r.Limit), r.Burst)
-		l.limiters.Store(r.Name, lim)
-		return
-	}
+	return val.(*rate.Limiter)
+}
 
-	return
+func (sl *tokenBucketLimiter) now() time.Time {
+	if assert.IsNil(sl.clock) {
+		return time.Now()
+	}
+	return sl.clock.Now()
 }
