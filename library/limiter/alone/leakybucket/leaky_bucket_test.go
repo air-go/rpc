@@ -1,6 +1,7 @@
 package leakybucket
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -9,73 +10,99 @@ import (
 )
 
 func TestLeaky(t *testing.T) {
+	ctx := context.Background()
+	key := "test"
 	c := clock.NewMock()
-	rl := NewLeakyBucket(1, 2, WithPer(time.Second), WithClock(c))
+	lb := NewLeakyBucket(
+		WithClock(c),
+		WithRate(time.Second, 1),
+		WithVolume(2),
+	)
 
 	// test volume, can process 2
 	first := time.Now()
 	c.Set(first)
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, false, rl.Allow())
+	ok, err := lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 
 	// test add 1 perRequest, 1 can be processed
 	second := first.Add(time.Second)
 	c.Set(second)
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, false, rl.Allow())
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 
 	// test add 2 second perRequest, 2 can be processed
 	third := second.Add(time.Second * 2)
 	c.Set(third)
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, false, rl.Allow())
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 
 	// test add 3 second perRequest, but exceed 2 volume, only 2 can be processed
 	forth := third.Add(time.Second * 3)
 	c.Set(forth)
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, false, rl.Allow())
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 }
 
-func TestSetLimit(t *testing.T) {
+func TestSetRate(t *testing.T) {
+	ctx := context.Background()
+	key := "test"
 	c := clock.NewMock()
-	rl := NewLeakyBucket(1, 2, WithPer(time.Second), WithClock(c))
+	lb := NewLeakyBucket(
+		WithClock(c),
+		WithRate(time.Second, 1),
+		WithVolume(2),
+	)
 
 	// test volume, can process 2
 	first := time.Now()
 	c.Set(first)
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, false, rl.Allow())
+	ok, err := lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 
 	// test add 1 rate, dynamic change rate to 2, 2 can be processed
-	rl.SetRate(2)
+	lb.SetRate(ctx, key, time.Second, 2)
 	second := first.Add(time.Second)
 	c.Set(second)
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, false, rl.Allow())
-}
-
-func TestSetBurst(t *testing.T) {
-	c := clock.NewMock()
-	rl := NewLeakyBucket(1, 2, WithPer(time.Second), WithClock(c))
-
-	// test volume, can process 2
-	first := time.Now()
-	c.Set(first)
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, false, rl.Allow())
-
-	// test add 1 second perRequest, dynamic change burst to 3, 3 can be processed
-	rl.SetRate(3)
-	second := first.Add(time.Second)
-	c.Set(second)
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, true, rl.Allow())
-	assert.Equal(t, false, rl.Allow())
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = lb.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 }

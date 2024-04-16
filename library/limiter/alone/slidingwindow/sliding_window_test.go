@@ -1,6 +1,7 @@
 package slidingwindow
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -9,48 +10,97 @@ import (
 )
 
 func TestAllow(t *testing.T) {
+	ctx := context.Background()
+	key := "test"
 	c := clock.NewMock()
 	now := time.Now()
 	c.Set(now)
 
-	sw := NewSlidingWindow(1, time.Second, WithClock(c))
-	assert.Equal(t, true, sw.Allow())
-	assert.Equal(t, false, sw.Allow())
+	sw := NewSlidingWindow(
+		WithClock(c),
+		WithLimit(1),
+		WithWindow(time.Second),
+	)
+
+	ok, err := sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 
 	c.Set(now.Add(time.Second))
-	assert.Equal(t, true, sw.Allow())
-	assert.Equal(t, false, sw.Allow())
+	ok, err = sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 }
 
 func TestSetLimit(t *testing.T) {
+	ctx := context.Background()
+	key := "test"
 	c := clock.NewMock()
 	now := time.Now()
 	c.Set(now)
 
-	sw := NewSlidingWindow(1, time.Second, WithClock(c))
-	assert.Equal(t, true, sw.Allow())
-	assert.Equal(t, false, sw.Allow())
+	sw := NewSlidingWindow(
+		WithClock(c),
+		WithLimit(1),
+		WithWindow(time.Second),
+	)
+
+	ok, err := sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 
 	c.Set(now.Add(time.Second))
-	sw.SetLimit(2)
-	assert.Equal(t, true, sw.Allow())
-	assert.Equal(t, true, sw.Allow())
-	assert.Equal(t, false, sw.Allow())
+	sw.SetLimit(ctx, key, 2)
+	ok, err = sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 }
 
 func TestSetWindow(t *testing.T) {
+	ctx := context.Background()
+	key := "test"
 	c := clock.NewMock()
 	now := time.Now()
 	c.Set(now)
 
-	sw := NewSlidingWindow(1, time.Second, WithClock(c))
-	assert.Equal(t, true, sw.Allow())
-	assert.Equal(t, false, sw.Allow())
+	sw := NewSlidingWindow(
+		WithClock(c),
+		WithLimit(1),
+		WithWindow(time.Second),
+	)
 
-	sw.SetWindow(time.Millisecond * 500)
+	ok, err := sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
+
+	sw.SetWindow(ctx, key, time.Millisecond*500)
 	c.Set(now.Add(time.Millisecond * 499))
-	assert.Equal(t, false, sw.Allow())
+	ok, err = sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 	c.Set(now.Add(time.Millisecond * 500))
-	assert.Equal(t, true, sw.Allow())
-	assert.Equal(t, false, sw.Allow())
+	ok, err = sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = sw.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 }

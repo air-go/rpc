@@ -5,57 +5,68 @@ import (
 	"testing"
 	"time"
 
+	"github.com/benbjohnson/clock"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/air-go/rpc/library/limiter"
 )
 
 func TestTokenBucket(t *testing.T) {
-	l := NewLimiter()
-
-	r := limiter.Resource{
-		Name:  "test",
-		Limit: 1,
-		Burst: 2,
-	}
 	ctx := context.Background()
-	assert.Equal(t, true, l.Check(ctx, r).Allow())
-	assert.Equal(t, true, l.Check(ctx, r).Allow())
-	assert.Equal(t, false, l.Check(ctx, r).Allow())
 
-	time.Sleep(time.Second)
-	assert.Equal(t, true, l.Check(ctx, r).Allow())
-	assert.Equal(t, false, l.Check(ctx, r).Allow())
+	c := clock.NewMock()
+	now := time.Now()
+	c.Set(now)
 
-	r.Limit = 2
-	l.SetLimit(ctx, r)
-	time.Sleep(time.Second)
-	assert.Equal(t, true, l.Check(ctx, r).Allow())
-	assert.Equal(t, true, l.Check(ctx, r).Allow())
-	assert.Equal(t, false, l.Check(ctx, r).Allow())
+	l := NewTokenBucket(
+		WithClock(c),
+		WithLimit(1),
+		WithBurst(2),
+	)
 
-	r.Burst = 3
-	l.SetBurst(ctx, r)
-	time.Sleep(time.Second * 3)
-	assert.Equal(t, true, l.Check(ctx, r).Allow())
-	assert.Equal(t, true, l.Check(ctx, r).Allow())
-	assert.Equal(t, true, l.Check(ctx, r).Allow())
-	assert.Equal(t, false, l.Check(ctx, r).Allow())
-}
+	key := "test"
+	ok, err := l.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = l.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = l.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 
-func Test_tokenBucketLimiter_getLimiter(t *testing.T) {
-	l := &tokenBucketLimiter{}
-	r := limiter.Resource{
-		Name:  "test",
-		Limit: 1,
-		Burst: 2,
-	}
-	lim := l.getLimiter(r)
-	assert.NotNil(t, lim)
-	lim = l.getLimiter(r)
-	assert.NotNil(t, lim)
+	now = now.Add(time.Second)
+	c.Set(now)
+	ok, err = l.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = l.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 
-	l.limiters.Store("test", 1)
-	lim = l.getLimiter(r)
-	assert.NotNil(t, lim)
+	l.SetLimit(ctx, key, 2)
+	now = now.Add(time.Second)
+	c.Set(now)
+	ok, err = l.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = l.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = l.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
+
+	l.SetBurst(ctx, key, 3)
+	now = now.Add(time.Second * 3)
+	c.Set(now)
+	ok, err = l.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = l.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, true, ok)
+	ok, err = l.Allow(ctx, key)
+	assert.Equal(t, true, ok)
+	ok, err = l.Allow(ctx, key)
+	assert.Nil(t, err)
+	assert.Equal(t, false, ok)
 }
