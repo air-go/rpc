@@ -93,41 +93,6 @@ func (sl *slidingLog) Allow(ctx context.Context, key string, opts ...limiter.All
 	}
 
 	return sl.getLimiter(key).allow(ctx, sl.now(), n, sl.getClient)
-
-	// end := sl.now()
-	// begin := end.Add(-window)
-
-	// newCtx := ucontext.RemoveCancel(ctx)
-	// defer func() {
-	// 	go nopanic.GoVoid(ucontext.RemoveCancel(ctx), func() {
-	// 		timer := time.NewTimer(sl.keyTTL)
-	// 		defer timer.Stop()
-
-	// 		_ = sl.getClient().ExpireAt(newCtx, key, end.Add(sl.keyTTL))
-	// 	})
-	// }()
-
-	// count, err := sl.getClient().ZCount(ctx, key, strconv.FormatInt(begin.UnixMicro(), 10), strconv.FormatInt(end.UnixMicro(), 10)).Result()
-	// if err != nil {
-	// 	return false, err
-	// }
-
-	// if count >= int64(limit) {
-	// 	return false, err
-	// }
-
-	// g := nopanic.New(ctx)
-	// g.Go(func() error {
-	// 	return sl.getClient().ZRemRangeByScore(ctx, key, "0", strconv.FormatInt(begin.UnixMicro()-1, 10)).Err()
-	// })
-	// g.Go(func() error {
-	// 	return sl.getClient().ZAdd(ctx, key, &redis.Z{Score: float64(end.UnixMicro()), Member: end.UnixMicro()}).Err()
-	// })
-	// if err = g.Wait(); err != nil {
-	// 	return false, err
-	// }
-
-	// return true, nil
 }
 
 func (sl *slidingLog) SetWindow(ctx context.Context, key string, window time.Duration) {
@@ -192,6 +157,10 @@ func (l *keyLimiter) allow(ctx context.Context, now time.Time, n int, getClient 
 		})
 	}()
 
+	if err := getClient().ZRemRangeByScore(ctx, l.key, "0", strconv.FormatInt(begin.UnixMicro()-1, 10)).Err(); err != nil {
+		return false, err
+	}
+
 	count, err := getClient().ZCount(ctx, l.key,
 		strconv.FormatInt(begin.UnixMicro(), 10), strconv.FormatInt(end.UnixMicro(), 10)).Result()
 	if err != nil {
@@ -202,14 +171,7 @@ func (l *keyLimiter) allow(ctx context.Context, now time.Time, n int, getClient 
 		return false, err
 	}
 
-	g := nopanic.New(ctx)
-	g.Go(func() error {
-		return getClient().ZRemRangeByScore(ctx, l.key, "0", strconv.FormatInt(begin.UnixMicro()-1, 10)).Err()
-	})
-	g.Go(func() error {
-		return getClient().ZAdd(ctx, l.key, &redis.Z{Score: float64(end.UnixMicro()), Member: end.UnixMicro()}).Err()
-	})
-	if err = g.Wait(); err != nil {
+	if err = getClient().ZAdd(ctx, l.key, &redis.Z{Score: float64(end.UnixMicro()), Member: end.UnixMicro()}).Err(); err != nil {
 		return false, err
 	}
 
