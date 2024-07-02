@@ -24,10 +24,12 @@ type SlidingLog interface {
 }
 
 type option struct {
-	clock  clock.Clock
-	keyTTL time.Duration
-	window time.Duration
-	limit  int
+	clock       clock.Clock
+	keyTTL      time.Duration
+	window      time.Duration
+	leftWindow  time.Time
+	rightWindow time.Time
+	limit       int
 }
 
 func defaultOption() *option {
@@ -54,6 +56,13 @@ func WithLimit(l int) Option {
 
 func WithWindow(w time.Duration) Option {
 	return func(o *option) { o.window = w }
+}
+
+func WithFledWindow(l, r time.Time) Option {
+	return func(o *option) {
+		o.leftWindow = l
+		o.rightWindow = r
+	}
 }
 
 type slidingLog struct {
@@ -92,7 +101,7 @@ func (sl *slidingLog) Allow(ctx context.Context, key string, opts ...limiter.All
 		n = opt.Count
 	}
 
-	return sl.getLimiter(key).allow(ctx, sl.now(), n, sl.getClient)
+	return sl.getLimiter(key).allow(ctx, sl.now(), n, opt.FixedWindow, sl.getClient)
 }
 
 func (sl *slidingLog) SetWindow(ctx context.Context, key string, window time.Duration) {
@@ -109,7 +118,7 @@ func (sl *slidingLog) getLimiter(key string) *keyLimiter {
 		return l.(*keyLimiter)
 	}
 
-	lim := newKeyLimiter(key, sl.keyTTL, sl.window, sl.limit)
+	lim := newKeyLimiter(key, sl.option)
 	sl.limiters.Store(key, lim)
 	return lim
 }
@@ -122,47 +131,84 @@ func (sl *slidingLog) now() time.Time {
 }
 
 type keyLimiter struct {
-	mu     sync.RWMutex
-	key    string
-	window time.Duration
-	keyTTL time.Duration
-	limit  int
+	mu          sync.RWMutex
+	key         string
+	window      time.Duration
+	leftWindow  time.Time
+	rightWindow time.Time
+	keyTTL      time.Duration
+	limit       int
 }
 
-func newKeyLimiter(key string, keyTTL, window time.Duration, limit int) *keyLimiter {
+func newKeyLimiter(key string, o *option) *keyLimiter {
 	return &keyLimiter{
-		key:    key,
-		window: window,
-		keyTTL: keyTTL,
-		limit:  limit,
+		key:         key,
+		window:      o.window,
+		leftWindow:  o.leftWindow,
+		rightWindow: o.rightWindow,
+		keyTTL:      o.keyTTL,
+		limit:       o.limit,
 	}
 }
 
-func (l *keyLimiter) allow(ctx context.Context, now time.Time, n int, getClient func() *redis.Client) (bool, error) {
+func (l *keyLimiter) allow(ctx context.Context, now time.Time, n int, fixedWindow bool, getClient func() *redis.Client) (bool, error) {
+	if fixedWindow {
+		return l.allowFixedWindow(ctx, now, n, getClient)
+	}
+
+	return l.allowDuration(ctx, now, n, getClient)
+}
+
+func (l *keyLimiter) duration2Window(now time.Time, d time.Duration) (left, right time.Time) {
+	return now.Add(-d), now
+}
+
+func (l *keyLimiter) allowFixedWindow(ctx context.Context, now time.Time, n int, getClient func() *redis.Client) (bool, error) {
+	l.mu.RLock()
+	limit := l.limit
+	left := l.leftWindow
+	right := l.rightWindow
+	l.mu.RUnlock()
+
+	if left.IsZero() || right.IsZero() {
+		return false, errors.New("left window or right window empty")
+	}
+
+	if now.Before(left) || now.After(right) {
+		return false, errors.New("now time illegal")
+	}
+
+	return l.handle(ctx, left, right, now, limit, n, getClient)
+}
+
+func (l *keyLimiter) allowDuration(ctx context.Context, now time.Time, n int, getClient func() *redis.Client) (bool, error) {
 	l.mu.RLock()
 	limit := l.limit
 	window := l.window
 	l.mu.RUnlock()
 
-	end := now
-	begin := end.Add(-window)
+	left, right := l.duration2Window(now, window)
 
+	return l.handle(ctx, left, right, now, limit, n, getClient)
+}
+
+func (l *keyLimiter) handle(ctx context.Context, left, right, now time.Time, limit, n int, getClient func() *redis.Client) (bool, error) {
 	newCtx := ucontext.RemoveCancel(ctx)
 	defer func() {
 		go nopanic.GoVoid(ucontext.RemoveCancel(ctx), func() {
 			timer := time.NewTimer(l.keyTTL)
 			defer timer.Stop()
 
-			_ = getClient().ExpireAt(newCtx, l.key, end.Add(l.keyTTL))
+			_ = getClient().ExpireAt(newCtx, l.key, right.Add(l.keyTTL))
 		})
 	}()
 
-	if err := getClient().ZRemRangeByScore(ctx, l.key, "0", strconv.FormatInt(begin.UnixMicro()-1, 10)).Err(); err != nil {
+	if err := getClient().ZRemRangeByScore(ctx, l.key, "0", strconv.FormatInt(left.UnixMicro()-1, 10)).Err(); err != nil {
 		return false, err
 	}
 
 	count, err := getClient().ZCount(ctx, l.key,
-		strconv.FormatInt(begin.UnixMicro(), 10), strconv.FormatInt(end.UnixMicro(), 10)).Result()
+		strconv.FormatInt(left.UnixMicro(), 10), strconv.FormatInt(right.UnixMicro(), 10)).Result()
 	if err != nil {
 		return false, err
 	}
@@ -171,11 +217,14 @@ func (l *keyLimiter) allow(ctx context.Context, now time.Time, n int, getClient 
 		return false, err
 	}
 
-	if err = getClient().ZAdd(ctx, l.key, &redis.Z{Score: float64(end.UnixMicro()), Member: end.UnixMicro()}).Err(); err != nil {
-		return false, err
+	for i := 1; i <= n; i++ {
+		e := getClient().ZAdd(ctx, l.key, &redis.Z{Score: float64(now.UnixMicro()), Member: now.UnixMicro()}).Err()
+		if e != nil {
+			err = e
+		}
 	}
 
-	return true, nil
+	return true, err
 }
 
 func (l *keyLimiter) setLimit(limit int) {
@@ -187,5 +236,17 @@ func (l *keyLimiter) setLimit(limit int) {
 func (l *keyLimiter) setWindow(window time.Duration) {
 	l.mu.Lock()
 	l.window = window
+	l.mu.Unlock()
+}
+
+func (l *keyLimiter) setLeftWindow(lf time.Time) {
+	l.mu.Lock()
+	l.leftWindow = lf
+	l.mu.Unlock()
+}
+
+func (l *keyLimiter) setRightWindow(rw time.Time) {
+	l.mu.Lock()
+	l.rightWindow = rw
 	l.mu.Unlock()
 }

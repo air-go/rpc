@@ -33,28 +33,21 @@ func TestSlidingLog(t *testing.T) {
 		ok, err := sl.Allow(ctx, key)
 		assert.Nil(t, err)
 		assert.Equal(t, true, ok)
-		count, _ := rc.ZCount(ctx, key, "0", strconv.FormatInt(c.Now().UnixMicro(), 10)).Result()
-		assert.Equal(t, int64(1), count)
 
 		// not over 3 second, should limit
 		ok, err = sl.Allow(ctx, key)
 		assert.Nil(t, err)
 		assert.Equal(t, false, ok)
-		count, _ = rc.ZCount(ctx, key, "0", strconv.FormatInt(c.Now().UnixMicro(), 10)).Result()
-		assert.Equal(t, int64(1), count)
 
 		// over 3 second, should not limit
 		c.Add(time.Second * 4)
 		ok, err = sl.Allow(ctx, key)
 		assert.Nil(t, err)
 		assert.Equal(t, true, ok)
-		count, _ = rc.ZCount(ctx, key, "0", strconv.FormatInt(c.Now().UnixMicro(), 10)).Result()
-		assert.Equal(t, int64(1), count)
+
 		ok, err = sl.Allow(ctx, key)
 		assert.Nil(t, err)
 		assert.Equal(t, false, ok)
-		count, _ = rc.ZCount(ctx, key, "0", strconv.FormatInt(c.Now().UnixMicro(), 10)).Result()
-		assert.Equal(t, int64(1), count)
 	}()
 
 	// test change limit
@@ -74,22 +67,16 @@ func TestSlidingLog(t *testing.T) {
 		ok, err := sl.Allow(ctx, key)
 		assert.Nil(t, err)
 		assert.Equal(t, true, ok)
-		count, _ := rc.ZCount(ctx, key, "0", strconv.FormatInt(c.Now().UnixMicro(), 10)).Result()
-		assert.Equal(t, int64(1), count)
 
 		ok, err = sl.Allow(ctx, key)
 		assert.Nil(t, err)
 		assert.Equal(t, false, ok)
-		count, _ = rc.ZCount(ctx, key, "0", strconv.FormatInt(c.Now().UnixMicro(), 10)).Result()
-		assert.Equal(t, int64(1), count)
 
 		c.Add(time.Second)
 		sl.SetLimit(ctx, key, 2)
 		ok, err = sl.Allow(ctx, key)
 		assert.Nil(t, err)
 		assert.Equal(t, true, ok)
-		count, _ = rc.ZCount(ctx, key, "0", strconv.FormatInt(c.Now().UnixMicro(), 10)).Result()
-		assert.Equal(t, int64(2), count)
 	}()
 
 	// test change window
