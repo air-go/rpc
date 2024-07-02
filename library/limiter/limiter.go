@@ -14,11 +14,16 @@ type ParallelLimiter interface {
 }
 
 type AllowOptions struct {
-	Count int
+	Count       int
+	FixedWindow bool // Use left window and right window, if true.
 }
 
 type AllowOptionFunc func(*AllowOptions)
 
 func OptionCount(count int) AllowOptionFunc {
 	return func(opts *AllowOptions) { opts.Count = count }
+}
+
+func OptionFixedWindow() AllowOptionFunc {
+	return func(opts *AllowOptions) { opts.FixedWindow = true }
 }
