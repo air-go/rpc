@@ -27,7 +27,7 @@ func (*opentelemetryHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (c
 		return ctx, nil
 	}
 
-	ctx, _ = libraryOtel.Tracer().Start(ctx, semconv.DBSystemRedis.Value.AsString()+"-"+cmd.Name(), trace.WithSpanKind(trace.SpanKindClient))
+	ctx, _ = libraryOtel.Tracer(libraryOtel.TracerNameRedis).Start(ctx, semconv.DBSystemRedis.Value.AsString()+"-"+cmd.Name(), trace.WithSpanKind(trace.SpanKindClient))
 
 	return ctx, nil
 }
@@ -61,7 +61,7 @@ func (*opentelemetryHook) BeforeProcessPipeline(ctx context.Context, cmds []redi
 		return ctx, nil
 	}
 
-	ctx, _ = libraryOtel.Tracer().Start(ctx, semconv.DBSystemRedis.Value.AsString()+"-pipline", trace.WithSpanKind(trace.SpanKindClient))
+	ctx, _ = libraryOtel.Tracer(libraryOtel.TracerNameRedis).Start(ctx, semconv.DBSystemRedis.Value.AsString()+"-pipline", trace.WithSpanKind(trace.SpanKindClient))
 
 	return ctx, nil
 }

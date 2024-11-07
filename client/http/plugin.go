@@ -58,7 +58,7 @@ func (*OpentelemetryBeforePlugin) Handle(ctx context.Context, req *http.Request)
 		trace.WithSpanKind(trace.SpanKindClient),
 	}
 
-	ctx, span := libraryOtel.Tracer().Start(ctx, path, opts...)
+	ctx, span := libraryOtel.Tracer(libraryOtel.TracerNameHTTPClient).Start(ctx, path, opts...)
 	defer span.End()
 
 	return ctx, nil
