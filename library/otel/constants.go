@@ -31,3 +31,10 @@ const (
 	AttributeRedisCmdString = attribute.Key("redis.cmd.string")
 	AttributeRedisCmdArgs   = attribute.Key("redis.cmd.args")
 )
+
+const (
+	TracerNameHTTPServer = "http_server"
+	TracerNameHTTPClient = "http_client"
+	TracerNameGorm       = "grom"
+	TracerNameRedis      = "redis"
+)

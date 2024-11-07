@@ -33,7 +33,7 @@ func OpentelemetryMiddleware() gin.HandlerFunc {
 		}
 
 		spanName := c.Request.URL.Path
-		ctx, span := libraryOtel.Tracer().Start(ctx, spanName, opts...)
+		ctx, span := libraryOtel.Tracer(libraryOtel.TracerNameHTTPServer).Start(ctx, spanName, opts...)
 		defer span.End()
 
 		traceID := libraryOtel.TraceID(span)

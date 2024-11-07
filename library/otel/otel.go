@@ -134,8 +134,8 @@ func NewTracer(serviceName string, exporter tracesdk.SpanExporter, opts ...Optio
 	return
 }
 
-func Tracer() trace.Tracer {
-	return otel.Tracer(LibraryName)
+func Tracer(name string, opts ...trace.TracerOption) trace.Tracer {
+	return otel.Tracer(name, opts...)
 }
 
 func TraceID(span trace.Span) string {

@@ -20,7 +20,7 @@ func before(db *gorm.DB) {
 	if !libraryOtel.CheckHasTraceID(db.Statement.Context) {
 		return
 	}
-	db.Statement.Context, _ = libraryOtel.Tracer().Start(db.Statement.Context, semconv.DBSystemMySQL.Value.AsString(), trace.WithSpanKind(trace.SpanKindClient))
+	db.Statement.Context, _ = libraryOtel.Tracer(libraryOtel.TracerNameGorm).Start(db.Statement.Context, semconv.DBSystemMySQL.Value.AsString(), trace.WithSpanKind(trace.SpanKindClient))
 }
 
 // after gorm after execute action do something
