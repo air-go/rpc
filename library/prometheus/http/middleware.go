@@ -12,7 +12,6 @@ import (
 // So must register after PanicMiddleware and LoggerMiddleware.
 func HTTPMetricsMiddleware(opts ...OptionFunc) gin.HandlerFunc {
 	metrics := NewHTTPMetrics(opts...)
-	metrics.Register(nil)
 	return func(c *gin.Context) {
 		// handle filters
 		for _, filter := range metrics.getFilters() {
