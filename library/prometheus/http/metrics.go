@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 
 	lp "github.com/air-go/rpc/library/prometheus"
 )
@@ -20,11 +21,13 @@ type httpMetrics struct {
 	errorSummary   *prometheus.SummaryVec
 	panicCounter   prometheus.Counter
 	working        prometheus.Gauge
+	process        prometheus.Collector
+	gc             prometheus.Collector
+	registerer     prometheus.Registerer
 }
 
 var _ lp.Metrics = (*httpMetrics)(nil)
 
-// opts ...OptionFunc)
 func NewHTTPMetrics(opts ...OptionFunc) *httpMetrics {
 	opt := defaultOptions()
 	for _, o := range opts {
@@ -36,7 +39,7 @@ func NewHTTPMetrics(opts ...OptionFunc) *httpMetrics {
 		labels = append(labels, l.Name())
 	}
 
-	return &httpMetrics{
+	m := &httpMetrics{
 		opts: opt,
 		successCounter: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "http_server",
@@ -81,23 +84,29 @@ func NewHTTPMetrics(opts ...OptionFunc) *httpMetrics {
 			Name:      "working_count",
 			Help:      "http_server working_count",
 		}),
+		process:    collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+		gc:         collectors.NewGoCollector(),
+		registerer: prometheus.DefaultRegisterer,
 	}
-}
 
-func (m *httpMetrics) Register(r prometheus.Registerer) {
 	m.once.Do(func() {
-		if r == nil {
-			r = prometheus.DefaultRegisterer
-		}
-		r.MustRegister(
+		m.registerer.MustRegister(
 			m.successCounter,
 			m.successSummary,
 			m.errorCounter,
 			m.errorSummary,
 			m.panicCounter,
 			m.working,
+			m.process,
+			m.gc,
 		)
 	})
+
+	return m
+}
+
+func (m *httpMetrics) Register(c ...prometheus.Collector) {
+	m.registerer.MustRegister(c...)
 }
 
 func (m *httpMetrics) withLabelValues(c *gin.Context, cost time.Duration) {
