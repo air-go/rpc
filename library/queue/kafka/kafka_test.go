@@ -82,13 +82,6 @@ func TestProduce(t *testing.T) {
 	_ = cli.Shutdown()
 }
 
-func TestConfig(t *testing.T) {
-	cli := &Client{}
-	cli.newSyncConfig()
-	cli.newAsyncProducer()
-	cli.newConsumeConfig()
-}
-
 func newClient(t *testing.T, serviceName, group, topic string) *Client {
 	mockBroker := initMockBroker(t, serviceName, group, topic)
 	defer mockBroker.Close()
@@ -116,11 +109,8 @@ func newClient(t *testing.T, serviceName, group, topic string) *Client {
 	config.Consumer.Return.Errors = true
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest
 	cli, _ := New(serviceName,
-		SyncConfig(config),
-		AsyncConfig(config),
-		ConsumeConfig(config),
-		RefreshInterval(time.Second),
-		OpenConsumeLog(),
+		WithConfig(config),
+		WithRefreshInterval(time.Second),
 	)
 	return cli
 }
