@@ -10,18 +10,20 @@ const (
 )
 
 const (
-	ModuleHTTP  = "HTTP"
-	ModuleRPC   = "RPC"
-	ModuleMySQL = "MySQL"
-	ModuleRedis = "Redis"
-	ModuleQueue = "Queue"
-	ModuleCron  = "Cron"
+	ModuleHTTP       = "HTTP"
+	ModuleRPC        = "RPC"
+	ModuleMySQL      = "MySQL"
+	ModuleRedis      = "Redis"
+	ModuleKafka      = "kafka"
+	ModuleCron       = "Cron"
+	ModuleDiscoverer = "Discoverer"
 )
 
 const (
 	AppName        = "app_name"
 	LogID          = "log_id"
 	TraceID        = "trace_id"
+	UUID           = "uuid"
 	Module         = "module"
 	ServiceName    = "service_name"
 	RequestHeader  = "request_header"

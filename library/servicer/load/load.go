@@ -1,18 +1,14 @@
 package load
 
 import (
-	"errors"
 	"path/filepath"
-	"strings"
 
-	"github.com/why444216978/go-util/assert"
 	utilDir "github.com/why444216978/go-util/dir"
 
 	"github.com/air-go/rpc/library/config"
+	df "github.com/air-go/rpc/library/discoverer/factory"
 	"github.com/air-go/rpc/library/etcd"
-	"github.com/air-go/rpc/library/registry"
-	registryEtcd "github.com/air-go/rpc/library/registry/etcd"
-	"github.com/air-go/rpc/library/selector/factory"
+	lf "github.com/air-go/rpc/library/loadbalancer/factory"
 	"github.com/air-go/rpc/library/servicer"
 	"github.com/air-go/rpc/library/servicer/service"
 )
@@ -31,7 +27,6 @@ func LoadGlobPattern(path, suffix string, etcd *etcd.Etcd) (err error) {
 		return
 	}
 
-	var discover registry.Discovery
 	info := utilDir.FileInfo{}
 	cfg := &service.Config{}
 	for _, f := range files {
@@ -42,20 +37,7 @@ func LoadGlobPattern(path, suffix string, etcd *etcd.Etcd) (err error) {
 			return
 		}
 
-		if cfg.Type == servicer.TypeRegistry {
-			if assert.IsNil(etcd) {
-				return errors.New("LoadGlobPattern etcd nil")
-			}
-			if strings.TrimSpace(cfg.RegistryName) == "" {
-				return errors.New("service RegistryName is empty")
-			}
-
-			if discover, err = registryEtcd.NewDiscovery(etcd.Client, cfg.RegistryName); err != nil {
-				return
-			}
-		}
-
-		if err = LoadService(cfg, service.WithDiscovery(discover), service.WithSelector(factory.New(cfg.ServiceName, cfg.Selector))); err != nil {
+		if err = LoadService(cfg); err != nil {
 			return
 		}
 	}
@@ -64,7 +46,17 @@ func LoadGlobPattern(path, suffix string, etcd *etcd.Etcd) (err error) {
 }
 
 func LoadService(config *service.Config, opts ...service.Option) (err error) {
-	s, err := service.NewService(config, opts...)
+	loadBalancer, err := lf.NewLoadBalancer(config.LoadBalancerStrategy)
+	if err != nil {
+		return
+	}
+
+	discovery, err := df.NewDiscoverer(config.DiscovererStrategy, config.ServiceName, loadBalancer)
+	if err != nil {
+		return
+	}
+
+	s, err := service.NewService(config, discovery, loadBalancer, opts...)
 	if err != nil {
 		return
 	}

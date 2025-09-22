@@ -93,9 +93,14 @@ func (r *RPC) Send(ctx context.Context, request client.Request, response client.
 	if err != nil {
 		return
 	}
+
+	host, port, err := net.SplitHostPort(node.Addr().String())
+	if err != nil {
+		err = errors.Wrapf(err, "servicer [%s] SplitHostPort fail", serviceName)
+	}
 	logger.AddField(ctx,
-		logger.Reflect(logger.ServerIP, node.Host()),
-		logger.Reflect(logger.ServerPort, node.Port()))
+		logger.Reflect(logger.ServerIP, host),
+		logger.Reflect(logger.ServerPort, port))
 
 	if assert.IsNil(node) {
 		err = errors.New("node nil")
@@ -103,7 +108,7 @@ func (r *RPC) Send(ctx context.Context, request client.Request, response client.
 	}
 
 	// build url
-	uu, err := r.buildURL(request, node)
+	uu, err := r.buildURL(request, host, port)
 	if err != nil {
 		return
 	}
@@ -145,10 +150,10 @@ func (r *RPC) formatURI(ctx context.Context, uu *url.URL) string {
 	return fmt.Sprintf("%s?%s", uu.Path, uu.RawQuery)
 }
 
-func (r *RPC) buildURL(request client.Request, node servicer.Node) (u *url.URL, err error) {
+func (r *RPC) buildURL(request client.Request, host, port string) (u *url.URL, err error) {
 	u = &url.URL{
 		Scheme:   "http",
-		Host:     fmt.Sprintf("%s:%d", node.Host(), node.Port()),
+		Host:     fmt.Sprintf("%s:%s", host, port),
 		Path:     request.GetPath(),
 		RawQuery: request.GetQuery().Encode(),
 	}
@@ -269,7 +274,7 @@ func (r *RPC) getClient(ctx context.Context, serviceName string, service service
 		return
 	}
 
-	address := node.Address()
+	address := node.Addr().String()
 
 	tp := &http.Transport{
 		MaxIdleConnsPerHost: 30,

@@ -2,10 +2,9 @@ package transport
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/url"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/air-go/rpc/library/logger"
 	"github.com/air-go/rpc/library/logger/zap"
 	"github.com/air-go/rpc/library/servicer"
-	"github.com/air-go/rpc/library/servicer/mock"
 	"github.com/air-go/rpc/mock/tools/server"
 	jsonCodec "github.com/why444216978/codec/json"
 )
@@ -126,14 +124,13 @@ func TestDefaultRequest(t *testing.T) {
 				_ = srv.Stop()
 			}()
 
-			arr := strings.Split(srv.Addr(), ":")
-			port, _ := strconv.Atoi(arr[1])
-			node := servicer.NewNode(arr[0], port)
+			addr, _ := net.ResolveTCPAddr("tcp", srv.Addr())
+			node := servicer.NewNode(addr)
 
 			// servicer mock
 			ctl := gomock.NewController(t)
 			defer ctl.Finish()
-			s := mock.NewMockServicer(ctl)
+			s := servicer.NewMockServicer(ctl)
 			s.EXPECT().Name().AnyTimes().Return("test")
 			s.EXPECT().Pick(gomock.Any()).Times(1).Return(node, nil)
 			// s.EXPECT().GetCaCrt().Times(1).Return([]byte(""))

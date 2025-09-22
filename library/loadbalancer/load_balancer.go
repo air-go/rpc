@@ -2,12 +2,25 @@ package loadbalancer
 
 import (
 	"context"
-	"net"
+
+	"github.com/air-go/rpc/library/servicer"
 )
 
+type LoadBalancerStrategy string
+
+const (
+	LoadBalancerStrategyRoundRobin     LoadBalancerStrategy = "RoundRobin"
+	LoadBalancerStrategyWeightedRandom LoadBalancerStrategy = "WeightedRandom"
+)
+
+type LoadBalancerOptions struct{}
+
+type LoadBalancerOptionFunc func(*LoadBalancerOptions)
+
 type LoadBalancer interface {
-	Strategy() string
-	SetAddrs([]net.Addr) error
-	Pick(context.Context) (net.Addr, error)
-	Back(net.Addr, error)
+	Strategy() LoadBalancerStrategy
+	SetNodes([]servicer.Node) error
+	GetNodes() []servicer.Node
+	Pick(context.Context) (servicer.Node, error)
+	Back(servicer.Node, error)
 }

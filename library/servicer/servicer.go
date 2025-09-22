@@ -52,9 +52,8 @@ func GetServicer(serviceName string) (Servicer, bool) {
 
 type Servicer interface {
 	Name() string
-	RegistryName() string
 	Pick(ctx context.Context) (Node, error)
-	All(ctx context.Context) ([]Node, error)
+	GetNodes(ctx context.Context) []Node
 	Done(ctx context.Context, node Node, err error) error
 	GetCaCrt() []byte
 	GetClientPem() []byte

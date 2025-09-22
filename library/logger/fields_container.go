@@ -8,6 +8,10 @@ import (
 	lc "github.com/air-go/rpc/library/context"
 )
 
+func AddLogID(ctx context.Context) {
+	AddField(ctx, Reflect(LogID, NewLogID()))
+}
+
 func InitFieldsContainer(ctx context.Context) context.Context {
 	if f := findLogFields(ctx); f != nil {
 		return ctx

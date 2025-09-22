@@ -3,7 +3,7 @@ package logger
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/why444216978/go-util/snowflake"
@@ -16,7 +16,7 @@ func ExtractLogID(req *http.Request) string {
 	logID := req.Header.Get(LogHeader)
 
 	if logID == "" {
-		logID = snowflake.Generate().String()
+		logID = NewLogID()
 	}
 
 	req.Header.Set(LogHeader, logID)
@@ -37,9 +37,9 @@ func SetLogID(ctx context.Context, header http.Header) (err error) {
 func GetRequestBody(req *http.Request) []byte {
 	reqBody := []byte{}
 	if req.Body != nil {
-		reqBody, _ = ioutil.ReadAll(req.Body)
+		reqBody, _ = io.ReadAll(req.Body)
 	}
-	req.Body = ioutil.NopCloser(bytes.NewBuffer(reqBody)) // Reset
+	req.Body = io.NopCloser(bytes.NewBuffer(reqBody)) // Reset
 
 	return reqBody
 }

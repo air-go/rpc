@@ -2,4 +2,4 @@ package loadbalancer
 
 import "errors"
 
-var ErrAddrsEmpty = errors.New("addrs empty")
+var ErrNodesEmpty = errors.New("nodes empty")
