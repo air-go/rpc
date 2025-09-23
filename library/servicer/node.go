@@ -1,9 +1,7 @@
 package servicer
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
+	"net"
 	"sync"
 )
 
@@ -13,28 +11,12 @@ type Statistics struct {
 }
 
 type Node interface {
-	Address() string
-	Host() string
-	Port() int
+	Addr() net.Addr
 	Weight() int
 	FloatWeight() float64
 	Statistics() Statistics
 	IncrSuccess()
 	IncrFail()
-}
-
-func GenerateAddress(host string, port int) string {
-	return fmt.Sprintf("%s:%d", host, port)
-}
-
-func ExtractAddress(address string) (string, int) {
-	arr := strings.Split(address, ":")
-	if len(arr) != 2 {
-		return "", 0
-	}
-
-	port, _ := strconv.Atoi(arr[1])
-	return arr[0], port
 }
 
 type Option func(*node)
@@ -49,9 +31,7 @@ func WithFloatWeight(w float64) Option {
 
 type node struct {
 	lock        sync.RWMutex
-	address     string
-	host        string
-	port        int
+	addr        net.Addr
 	weight      int
 	floatWeight float64
 	statistics  Statistics
@@ -63,11 +43,9 @@ func Empty() *node {
 	return &node{}
 }
 
-func NewNode(host string, port int, opts ...Option) *node {
+func NewNode(addr net.Addr, opts ...Option) *node {
 	n := &node{
-		address:    GenerateAddress(host, port),
-		host:       host,
-		port:       port,
+		addr:       addr,
 		statistics: Statistics{},
 	}
 	for _, o := range opts {
@@ -77,16 +55,8 @@ func NewNode(host string, port int, opts ...Option) *node {
 	return n
 }
 
-func (n *node) Address() string {
-	return n.address
-}
-
-func (n *node) Host() string {
-	return n.host
-}
-
-func (n *node) Port() int {
-	return n.port
+func (n *node) Addr() net.Addr {
+	return n.addr
 }
 
 func (n *node) Statistics() Statistics {

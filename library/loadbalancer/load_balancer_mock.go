@@ -6,9 +6,9 @@ package loadbalancer
 
 import (
 	context "context"
-	net "net"
 	reflect "reflect"
 
+	servicer "github.com/air-go/rpc/library/servicer"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -36,7 +36,7 @@ func (m *MockLoadBalancer) EXPECT() *MockLoadBalancerMockRecorder {
 }
 
 // Back mocks base method.
-func (m *MockLoadBalancer) Back(arg0 net.Addr, arg1 error) {
+func (m *MockLoadBalancer) Back(arg0 servicer.Node, arg1 error) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Back", arg0, arg1)
 }
@@ -47,11 +47,25 @@ func (mr *MockLoadBalancerMockRecorder) Back(arg0, arg1 interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Back", reflect.TypeOf((*MockLoadBalancer)(nil).Back), arg0, arg1)
 }
 
+// GetNodes mocks base method.
+func (m *MockLoadBalancer) GetNodes() []servicer.Node {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNodes")
+	ret0, _ := ret[0].([]servicer.Node)
+	return ret0
+}
+
+// GetNodes indicates an expected call of GetNodes.
+func (mr *MockLoadBalancerMockRecorder) GetNodes() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodes", reflect.TypeOf((*MockLoadBalancer)(nil).GetNodes))
+}
+
 // Pick mocks base method.
-func (m *MockLoadBalancer) Pick(arg0 context.Context) (net.Addr, error) {
+func (m *MockLoadBalancer) Pick(arg0 context.Context) (servicer.Node, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Pick", arg0)
-	ret0, _ := ret[0].(net.Addr)
+	ret0, _ := ret[0].(servicer.Node)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -62,25 +76,25 @@ func (mr *MockLoadBalancerMockRecorder) Pick(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pick", reflect.TypeOf((*MockLoadBalancer)(nil).Pick), arg0)
 }
 
-// SetAddrs mocks base method.
-func (m *MockLoadBalancer) SetAddrs(arg0 []net.Addr) error {
+// SetNodes mocks base method.
+func (m *MockLoadBalancer) SetNodes(arg0 []servicer.Node) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetAddrs", arg0)
+	ret := m.ctrl.Call(m, "SetNodes", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// SetAddrs indicates an expected call of SetAddrs.
-func (mr *MockLoadBalancerMockRecorder) SetAddrs(arg0 interface{}) *gomock.Call {
+// SetNodes indicates an expected call of SetNodes.
+func (mr *MockLoadBalancerMockRecorder) SetNodes(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAddrs", reflect.TypeOf((*MockLoadBalancer)(nil).SetAddrs), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNodes", reflect.TypeOf((*MockLoadBalancer)(nil).SetNodes), arg0)
 }
 
 // Strategy mocks base method.
-func (m *MockLoadBalancer) Strategy() string {
+func (m *MockLoadBalancer) Strategy() LoadBalancerStrategy {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Strategy")
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(LoadBalancerStrategy)
 	return ret0
 }
 

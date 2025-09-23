@@ -1,11 +1,16 @@
 package app
 
 import (
+	"os"
 	"time"
 
 	"github.com/why444216978/go-util/sys"
 
 	"github.com/air-go/rpc/library/config"
+)
+
+const (
+	DefaultIDC = "default"
 )
 
 var app struct {
@@ -19,11 +24,17 @@ var app struct {
 	ConnectTimeout int
 	WriteTimeout   int
 	ReadTimeout    int
+	IDC            string
 }
 
 func InitApp() (err error) {
 	err = config.ReadConfig("app", "toml", &app)
 	app.LocalIP, _ = sys.LocalIP()
+	app.IDC = DefaultIDC
+	if idc := os.Getenv("IDC"); idc != "" {
+		app.IDC = idc
+	}
+
 	return
 }
 
@@ -49,6 +60,10 @@ func Pprof() bool {
 
 func Debug() bool {
 	return app.IsDebug
+}
+
+func IDC() string {
+	return app.IDC
 }
 
 func ContextTimeout() time.Duration {

@@ -1,6 +1,6 @@
 module github.com/air-go/rpc
 
-go 1.19
+go 1.23
 
 require (
 	github.com/Shopify/sarama v1.38.1
@@ -8,6 +8,7 @@ require (
 	github.com/alicebob/miniredis/v2 v2.30.0
 	github.com/apolloconfig/agollo/v4 v4.1.1
 	github.com/benbjohnson/clock v1.3.0
+	github.com/bits-and-blooms/bloom/v3 v3.7.0
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/emirpasic/gods v1.18.1
 	github.com/gin-contrib/cors v1.3.1
@@ -28,6 +29,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/smartystreets/goconvey v1.7.2
 	github.com/soheilhy/cmux v0.1.5
+	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cast v1.4.1
 	github.com/spf13/viper v1.11.0
 	github.com/streadway/amqp v1.0.0
@@ -36,7 +38,6 @@ require (
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/why444216978/codec v1.0.3
 	github.com/why444216978/go-util v1.0.29
-	go.etcd.io/etcd/api/v3 v3.5.2
 	go.etcd.io/etcd/client/v3 v3.5.0
 	go.opentelemetry.io/contrib/propagators/b3 v1.8.0
 	go.opentelemetry.io/contrib/propagators/jaeger v1.8.0
@@ -63,11 +64,9 @@ require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
-	github.com/allegro/bigcache/v3 v3.1.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
-	github.com/bits-and-blooms/bloom/v3 v3.7.0 // indirect
 	github.com/bwmarrin/snowflake v0.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
@@ -132,7 +131,6 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/smartystreets/assertions v1.2.0 // indirect
-	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -141,6 +139,7 @@ require (
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20220504180219-658193537a64 // indirect
+	go.etcd.io/etcd/api/v3 v3.5.2 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.2 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/crypto v0.11.0 // indirect

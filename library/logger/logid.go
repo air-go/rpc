@@ -11,7 +11,13 @@ import (
 	"os"
 	"sync/atomic"
 	"time"
+
+	"github.com/why444216978/go-util/snowflake"
 )
+
+func NewLogID() string {
+	return snowflake.Generate().String()
+}
 
 // LogId is a unique ID identifying a log record. It must be exactly 12 bytes
 // long.

@@ -398,7 +398,7 @@ func (p *connPool) getLastConnError() error {
 }
 
 var timerPool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		t := time.NewTimer(time.Hour)
 		t.Stop()
 		return t

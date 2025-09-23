@@ -7,27 +7,28 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/air-go/rpc/library/registry"
-
 	clientv3 "go.etcd.io/etcd/client/v3"
+
+	"github.com/air-go/rpc/library/logger"
+	"github.com/air-go/rpc/library/logger/setup"
+	"github.com/air-go/rpc/library/registrar"
 )
 
 type RegistrarOption struct {
-	lease  int64
-	encode registry.Encode
+	lease int64
 }
 
 type RegistrarOptionFunc func(*RegistrarOption)
 
 func defaultRegistrarOption() *RegistrarOption {
 	return &RegistrarOption{
-		lease:  5,
-		encode: JSONEncode,
+		lease: 5,
 	}
 }
 
 // EtcdRegistrar
 type EtcdRegistrar struct {
+	setup.SetupLogger
 	opts          *RegistrarOption
 	cli           *clientv3.Client
 	serviceName   string
@@ -39,14 +40,10 @@ type EtcdRegistrar struct {
 	val           string
 }
 
-var _ registry.Registrar = (*EtcdRegistrar)(nil)
+var _ registrar.Registrar = (*EtcdRegistrar)(nil)
 
 func WithRegistrarLease(lease int64) RegistrarOptionFunc {
 	return func(o *RegistrarOption) { o.lease = lease }
-}
-
-func WithRegistrarEncode(encode registry.Encode) RegistrarOptionFunc {
-	return func(o *RegistrarOption) { o.encode = encode }
 }
 
 // NewRegistry
@@ -76,12 +73,16 @@ func NewRegistry(cli *clientv3.Client, name, host string, port int, opts ...Regi
 
 	r.key = fmt.Sprintf("%s.%s.%d", r.serviceName, r.host, r.port)
 
-	if r.val, err = r.opts.encode(&registry.Node{
-		Host: r.host,
-		Port: r.port,
-	}); err != nil {
+	v := map[string]interface{}{
+		"host": r.host,
+		"port": r.port,
+	}
+
+	b, err := json.Marshal(v)
+	if err != nil {
 		return nil, err
 	}
+	r.val = string(b)
 
 	return r, nil
 }
@@ -126,13 +127,15 @@ func (s *EtcdRegistrar) putKeyWithRegistrarLease(ctx context.Context, lease int6
 
 // listenLeaseRespChan
 func (s *EtcdRegistrar) listenLeaseRespChan() {
-	for leaseKeepResp := range s.keepAliveChan {
-		_ = leaseKeepResp
-		// log.Println("续租：", leaseKeepResp)
+	for ls := range s.keepAliveChan {
+		s.AutoLogger().Info(context.Background(), "etcdKeepAliveChanReceive",
+			logger.Reflect(logger.ServiceName, s.serviceName),
+			logger.Reflect(logger.Response, ls),
+		)
 	}
 }
 
-// Close
+// DeRegister
 func (s *EtcdRegistrar) DeRegister(ctx context.Context) error {
 	// 撤销租约
 	if _, err := s.cli.Revoke(ctx, s.leaseID); err != nil {
@@ -141,11 +144,6 @@ func (s *EtcdRegistrar) DeRegister(ctx context.Context) error {
 	return s.cli.Close()
 }
 
-func JSONEncode(node *registry.Node) (string, error) {
-	val, err := json.Marshal(node)
-	if err != nil {
-		return "", errors.New("marshal node " + err.Error())
-	}
-
-	return string(val), nil
+func (s *EtcdRegistrar) SetLogger(l logger.Logger) {
+	s.SetupLogger.SetLogger(l)
 }

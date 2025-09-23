@@ -11,12 +11,12 @@ import (
 	"github.com/why444216978/go-util/assert"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/air-go/rpc/library/registry"
+	"github.com/air-go/rpc/library/registrar"
 	"github.com/air-go/rpc/server"
 )
 
 type Option struct {
-	registrar registry.Registrar
+	registrar registrar.Registrar
 }
 
 type OptionFunc func(*Option)
@@ -25,7 +25,7 @@ func defaultOption() *Option {
 	return &Option{}
 }
 
-func WithRegistrar(r registry.Registrar) OptionFunc {
+func WithRegistrar(r registrar.Registrar) OptionFunc {
 	return func(o *Option) { o.registrar = r }
 }
 

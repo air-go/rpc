@@ -11,35 +11,23 @@ import (
 	ucontext "github.com/why444216978/go-util/context"
 	"github.com/why444216978/go-util/nopanic"
 
-	"github.com/air-go/rpc/library/addr"
 	"github.com/air-go/rpc/library/discoverer"
 	"github.com/air-go/rpc/library/loadbalancer"
 	"github.com/air-go/rpc/library/logger"
 	"github.com/air-go/rpc/library/logger/setup"
+	"github.com/air-go/rpc/library/servicer"
 )
 
-type Node struct {
-	Host    string
-	Port    int
-	Network string // ip/ipv4/ipv6
-}
-
-type options struct {
-	logger        logger.Logger
-	refreshWindow time.Duration
-}
-
-func defaultOptions() *options {
-	return &options{
-		refreshWindow: 3 * time.Second,
+func defaultOptions() *discoverer.Options {
+	return &discoverer.Options{
+		RefreshWindow: 3 * time.Second,
 	}
 }
 
 type dnsDiscoverer struct {
-	*options
+	*discoverer.Options
 	setup.SetupLogger
 	serviceName string
-	nodes       []Node // current idc config
 	lb          loadbalancer.LoadBalancer
 	startOnce   sync.Once
 	stop        context.CancelFunc
@@ -47,17 +35,7 @@ type dnsDiscoverer struct {
 
 var _ discoverer.Discoverer = (*dnsDiscoverer)(nil)
 
-type optionFunc func(*options)
-
-func WithLogger(l logger.Logger) optionFunc {
-	return func(o *options) { o.logger = l }
-}
-
-func WithRefreshWindow(t time.Duration) optionFunc {
-	return func(o *options) { o.refreshWindow = t }
-}
-
-func NewDNSDiscoverer(serviceName string, lb loadbalancer.LoadBalancer, nodes []Node, opts ...optionFunc) (*dnsDiscoverer, error) {
+func NewDNSDiscoverer(serviceName string, lb loadbalancer.LoadBalancer, opts ...discoverer.OptionFunc) (*dnsDiscoverer, error) {
 	if assert.IsNil(lb) {
 		return nil, errors.New("new dns discoverer loadbalancer nil")
 	}
@@ -67,14 +45,17 @@ func NewDNSDiscoverer(serviceName string, lb loadbalancer.LoadBalancer, nodes []
 		o(opt)
 	}
 
+	if len(opt.IDCNodes) == 0 {
+		return nil, errors.New("new dns discoverer nodes nil")
+	}
+
 	dd := &dnsDiscoverer{
-		options:     opt,
+		Options:     opt,
 		serviceName: serviceName,
-		nodes:       nodes,
 		lb:          lb,
 	}
 
-	dd.SetupLogger.SetLogger(opt.logger)
+	dd.SetupLogger.SetLogger(opt.Logger)
 
 	return dd, nil
 }
@@ -108,7 +89,7 @@ func (dd *dnsDiscoverer) discover(ctx context.Context, allowError bool) error {
 		return nil
 	}
 
-	if err = dd.lb.SetAddrs(addrs); err != nil {
+	if err = dd.lb.SetNodes(addrs); err != nil {
 		dd.AutoLogger().Error(ctx, "dnsDiscoverSetAddressesErr",
 			logger.Reflect(logger.ServiceName, dd.serviceName),
 			logger.Error(err),
@@ -119,11 +100,12 @@ func (dd *dnsDiscoverer) discover(ctx context.Context, allowError bool) error {
 	return nil
 }
 
-func (dd *dnsDiscoverer) getAddrs(ctx context.Context, allowError bool) ([]net.Addr, error) {
-	addrs := []net.Addr{}
-	for _, n := range dd.nodes {
-		ips, err := lookupIP(ctx, n.Network, n.Host)
+func (dd *dnsDiscoverer) getAddrs(ctx context.Context, allowError bool) ([]servicer.Node, error) {
+	addrs := []servicer.Node{}
+	for _, n := range dd.Options.IDCNodes {
+		ips, err := net.DefaultResolver.LookupIPAddr(ctx, n.Host)
 		if err != nil {
+			err = asDNSError(err)
 			dd.AutoLogger().Error(ctx, "dnsDiscoverLookupIPErr",
 				logger.Reflect(logger.ServiceName, dd.serviceName),
 				logger.Error(err),
@@ -133,11 +115,12 @@ func (dd *dnsDiscoverer) getAddrs(ctx context.Context, allowError bool) ([]net.A
 			}
 			return addrs, err
 		}
-		for _, i := range ips {
-			addrs = append(addrs, &addr.TCPAddr{
-				IP:   i,
+		for _, ip := range ips {
+			addrs = append(addrs, servicer.NewNode(&net.TCPAddr{
+				IP:   ip.IP,
 				Port: n.Port,
-			})
+				Zone: ip.Zone,
+			}))
 		}
 	}
 	return addrs, nil
@@ -145,7 +128,7 @@ func (dd *dnsDiscoverer) getAddrs(ctx context.Context, allowError bool) ([]net.A
 
 func (dd *dnsDiscoverer) loop(ctx context.Context) {
 	go nopanic.GoVoid(ctx, func() {
-		timer := time.NewTimer(dd.refreshWindow)
+		timer := time.NewTicker(dd.RefreshWindow)
 		defer timer.Stop()
 
 		for {
@@ -161,19 +144,6 @@ func (dd *dnsDiscoverer) loop(ctx context.Context) {
 			}
 		}
 	})
-}
-
-func lookupIP(ctx context.Context, network, host string) ([]net.IP, error) {
-	if ip := net.ParseIP(host); ip != nil {
-		return []net.IP{ip}, nil
-	}
-
-	ips, err := net.DefaultResolver.LookupIP(ctx, network, host)
-	if err != nil {
-		return ips, asDNSError(err)
-	}
-
-	return ips, nil
 }
 
 func asDNSError(err error) *net.DNSError {

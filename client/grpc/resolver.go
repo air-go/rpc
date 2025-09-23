@@ -24,14 +24,11 @@ func (r *registryResolver) ResolveNow(o resolver.ResolveNowOptions) {
 		return
 	}
 
-	nodes, err := srv.All(context.Background())
-	if err != nil {
-		return
-	}
+	nodes := srv.GetNodes(context.Background())
 
 	address := make([]resolver.Address, len(nodes))
 	for i, node := range nodes {
-		address[i] = resolver.Address{Addr: node.Address()}
+		address[i] = resolver.Address{Addr: node.Addr().String()}
 	}
 	r.cc.UpdateState(resolver.State{Addresses: address})
 }
