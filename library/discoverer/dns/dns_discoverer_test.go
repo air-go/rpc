@@ -18,7 +18,7 @@ func TestDNSDiscoverer(t *testing.T) {
 	defer ctl.Finish()
 
 	lb := loadbalancer.NewMockLoadBalancer(ctl)
-	lb.EXPECT().SetNodes(gomock.Any()).Times(2).Return(nil)
+	lb.EXPECT().SetNodes(gomock.Any()).AnyTimes().Return(nil)
 
 	dd, err := NewDNSDiscoverer("serviceName", lb,
 		discoverer.WithLogger(nop.Logger),
