@@ -8,10 +8,6 @@ import (
 	lc "github.com/air-go/rpc/library/context"
 )
 
-type Metrics interface {
-	Register(...prometheus.Collector)
-}
-
 var CustomCollector = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Namespace: "custom_error",

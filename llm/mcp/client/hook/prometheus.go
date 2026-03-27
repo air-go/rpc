@@ -2,10 +2,13 @@ package hook
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	lp "github.com/air-go/rpc/library/prometheus"
 )
 
 const (
@@ -15,13 +18,16 @@ const (
 
 // PrometheusClientHook is the client-side Prometheus metrics collection hook
 type PrometheusClientHook struct {
+	once       sync.Once
+	registerer prometheus.Registerer
 	callsTotal *prometheus.CounterVec
 	duration   *prometheus.HistogramVec
 }
 
 // NewPrometheusClientHook creates a new Prometheus client hook
 func NewPrometheusClientHook() *PrometheusClientHook {
-	return &PrometheusClientHook{
+	h := &PrometheusClientHook{
+		registerer: lp.GetRegistry(),
 		callsTotal: promauto.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: clientMetricNamespace,
@@ -42,6 +48,15 @@ func NewPrometheusClientHook() *PrometheusClientHook {
 			[]string{"server_name", "tool_name"},
 		),
 	}
+
+	h.once.Do(func() {
+		h.registerer.MustRegister(
+			h.callsTotal,
+			h.duration,
+		)
+	})
+
+	return h
 }
 
 // BeforeCall records the start time

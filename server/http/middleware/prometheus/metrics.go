@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
 
 	lp "github.com/air-go/rpc/library/prometheus"
 )
@@ -21,12 +20,8 @@ type httpMetrics struct {
 	errorSummary   *prometheus.SummaryVec
 	panicCounter   prometheus.Counter
 	working        prometheus.Gauge
-	process        prometheus.Collector
-	gc             prometheus.Collector
 	registerer     prometheus.Registerer
 }
-
-var _ lp.Metrics = (*httpMetrics)(nil)
 
 func NewHTTPMetrics(opts ...OptionFunc) *httpMetrics {
 	opt := defaultOptions()
@@ -84,9 +79,7 @@ func NewHTTPMetrics(opts ...OptionFunc) *httpMetrics {
 			Name:      "working_count",
 			Help:      "http_server working_count",
 		}),
-		process:    collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-		gc:         collectors.NewGoCollector(),
-		registerer: prometheus.DefaultRegisterer,
+		registerer: lp.GetRegistry(),
 	}
 
 	m.once.Do(func() {
@@ -97,8 +90,6 @@ func NewHTTPMetrics(opts ...OptionFunc) *httpMetrics {
 			m.errorSummary,
 			m.panicCounter,
 			m.working,
-			m.process,
-			m.gc,
 		)
 	})
 
