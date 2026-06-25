@@ -2,8 +2,6 @@ module github.com/air-go/rpc
 
 go 1.23.0
 
-toolchain go1.23.7
-
 require (
 	github.com/Shopify/sarama v1.38.1
 	github.com/agiledragon/gomonkey/v2 v2.4.0
