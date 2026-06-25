@@ -133,7 +133,7 @@ func (cli *Client) ConsumeGroup(p ConsumeGroupParams) (err error) {
 			cli.opts.logger.Error(ctx, "kafkaConsumerGroupErr",
 				logger.Reflect(logger.Module, logger.ModuleKafka),
 				logger.Reflect(logger.Method, "ConsumePartition"),
-				logger.Error(e),
+				logger.Error(err),
 			)
 		}
 	}()
@@ -354,7 +354,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 				session.Commit()
 			}
 
-			c.opts.logger.Error(ctx, "ConsumeClaimInfo",
+			c.opts.logger.Info(ctx, "ConsumeClaimInfo",
 				logger.Reflect(logger.Module, logger.ModuleKafka),
 				logger.Reflect(logger.Method, "ConsumeClaim"),
 				logger.Reflect(logger.API, msg.Topic),
