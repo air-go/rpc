@@ -1,11 +1,13 @@
 package load
 
 import (
+	"context"
 	"path/filepath"
 
 	utilDir "github.com/why444216978/go-util/dir"
 
 	"github.com/air-go/rpc/library/config"
+	"github.com/air-go/rpc/library/discoverer"
 	df "github.com/air-go/rpc/library/discoverer/factory"
 	"github.com/air-go/rpc/library/etcd"
 	lf "github.com/air-go/rpc/library/loadbalancer/factory"
@@ -13,7 +15,7 @@ import (
 	"github.com/air-go/rpc/library/servicer/service"
 )
 
-func LoadGlobPattern(path, suffix string, etcd *etcd.Etcd) (err error) {
+func LoadGlobPattern(ctx context.Context, path, suffix string, etcd *etcd.Etcd) (err error) {
 	var (
 		dir   string
 		files []string
@@ -27,17 +29,18 @@ func LoadGlobPattern(path, suffix string, etcd *etcd.Etcd) (err error) {
 		return
 	}
 
-	info := utilDir.FileInfo{}
-	cfg := &service.Config{}
 	for _, f := range files {
+		info := utilDir.FileInfo{}
 		if info, err = utilDir.GetPathInfo(f); err != nil {
 			return
 		}
+
+		cfg := &service.Config{}
 		if err = config.ReadConfig(filepath.Join("services", info.BaseNoExt), info.ExtNoSpot, cfg); err != nil {
 			return
 		}
 
-		if err = LoadService(cfg); err != nil {
+		if err = LoadService(ctx, cfg); err != nil {
 			return
 		}
 	}
@@ -45,13 +48,18 @@ func LoadGlobPattern(path, suffix string, etcd *etcd.Etcd) (err error) {
 	return
 }
 
-func LoadService(config *service.Config, opts ...service.Option) (err error) {
+func LoadService(ctx context.Context, config *service.Config, opts ...service.Option) (err error) {
 	loadBalancer, err := lf.NewLoadBalancer(config.LoadBalancerStrategy)
 	if err != nil {
 		return
 	}
 
-	discovery, err := df.NewDiscoverer(config.DiscovererStrategy, config.ServiceName, loadBalancer)
+	discovererOpts := []discoverer.OptionFunc{}
+	if len(config.IDCNodes) > 0 {
+		discovererOpts = append(discovererOpts, discoverer.WithIDCNodes(config.IDCNodes))
+	}
+
+	discovery, err := df.NewDiscoverer(config.DiscovererStrategy, config.ServiceName, loadBalancer, discovererOpts...)
 	if err != nil {
 		return
 	}
@@ -59,6 +67,9 @@ func LoadService(config *service.Config, opts ...service.Option) (err error) {
 	s, err := service.NewService(config, discovery, loadBalancer, opts...)
 	if err != nil {
 		return
+	}
+	if err = s.Start(ctx); err != nil {
+		return err
 	}
 
 	if err = servicer.SetServicer(s); err != nil {

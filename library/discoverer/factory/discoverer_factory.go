@@ -15,6 +15,6 @@ func NewDiscoverer(strategy discoverer.DiscovererStrategy, serviceName string,
 	case discoverer.DiscovererStrategyDNS:
 		return dns.NewDNSDiscoverer(serviceName, lb, opts...)
 	default:
-		return nil, errors.New("unknown loadbalancer type")
+		return nil, errors.New("unknown discoverer type")
 	}
 }
