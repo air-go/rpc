@@ -17,8 +17,9 @@ type Config struct {
 	ServiceName          string                            `validate:"required"`
 	Host                 string                            `validate:"required"`
 	Port                 int                               `validate:"required"`
-	DiscovererStrategy   discoverer.DiscovererStrategy     `validate:"required,oneof=wr"` // TODO support others
-	LoadBalancerStrategy loadbalancer.LoadBalancerStrategy `validate:"required,oneof=RoundRobin"`
+	DiscovererStrategy   discoverer.DiscovererStrategy     `validate:"required"`
+	LoadBalancerStrategy loadbalancer.LoadBalancerStrategy `validate:"required"`
+	IDCNodes             []discoverer.IDCNode
 	CaCrt                string
 	ClientPem            string
 	ClientKey            string
