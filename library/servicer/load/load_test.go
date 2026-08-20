@@ -1,6 +1,7 @@
 package load
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,7 +26,7 @@ func TestLoadService(t *testing.T) {
 			},
 		}
 
-		err := LoadService(cfg)
+		err := LoadService(context.Background(), cfg)
 		require.Nil(t, err)
 
 		s, ok := servicer.GetServicer(cfg.ServiceName)
@@ -43,7 +44,7 @@ func TestLoadService(t *testing.T) {
 			LoadBalancerStrategy: loadbalancer.LoadBalancerStrategyRoundRobin,
 		}
 
-		err := LoadService(cfg)
+		err := LoadService(context.Background(), cfg)
 		assert.EqualError(t, err, "new dns discoverer nodes nil")
 	})
 
@@ -56,7 +57,7 @@ func TestLoadService(t *testing.T) {
 			LoadBalancerStrategy: "unknown",
 		}
 
-		err := LoadService(cfg)
+		err := LoadService(context.Background(), cfg)
 		assert.EqualError(t, err, "unknown loadbalancer type")
 	})
 }

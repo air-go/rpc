@@ -21,17 +21,9 @@
 ## 建议反馈
 如果您对本框架有任何意见或建议，欢迎随时通过以下方式反馈和完善：
 1. 提 issues 反馈
-2. 通过下方的联系方式直接联系我
-3. 提 PR 共同维护
+2. 提 PR 共同维护
 <br><br>
 
-## 联系我
-QQ群：909211071
-<br>
-个人QQ：444216978
-<br>
-微信：AirGo___
-<br><br>
 
 ## 功能列表
 ✅ &nbsp;多格式配置读取
@@ -97,36 +89,43 @@ QQ群：909211071
     - grpc //grpc客户端
     - http //http客户端
   - library //基础组件库，不建议修改
+    - addr //地址解析
+    - apollo //阿波罗配置中心
     - app //app
-    - apollo //阿波罗
+    - bloom //布隆过滤器（本地、redis）
+    - broker //组件间事件通知
     - cache //分布式缓存
     - config //配置加载
+    - conn //连接封装
+    - connector //连接器
+    - connpool //连接池抽象
+    - context //上下文
     - cron //任务调度
+    - discoverer //服务发现（dns、etcd）
     - etcd //etcd
-    - grpc //grpc封装
-    - opentracing //opentracing分布式链路追踪
-    - limiter //限流
+    - limiter //限流（单机、分布式）
+    - loadbalancer //负载均衡（dwrr、icmp、p2c、roundrobin、wr、wrr）
     - lock //分布式锁
     - logger //日志
+    - opentracing //opentracing分布式链路追踪
     - orm //db orm
     - otel //otel分布式链路追踪
     - pool //通用链接池
     - prometheus //prometheus监控
-    - queue //消息队列
+    - queue //消息队列（kafka、rabbitmq）
     - redis //redis
-    - registry //注册中心
+    - registrar //服务注册
     - reliablequeue //可靠消息队列
-    - selector //负载均衡器
     - servicer //下游服务
+  - llm
+    - mcp //mcp客户端和服务端封装
   - mock
-    - third //三方单测mock
+    - generate //三方单测mock
     - tools //常见mock工具封装
   - server
     - grpc //grpc服务端
-    - http //http服务端  
-  - third //三方依赖引入
+    - http //http服务端
   .gitignore
-  Dockerfile
   LICENSE
   Makefile
   README.md
