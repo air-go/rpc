@@ -12,7 +12,8 @@ import (
 )
 
 type Response interface {
-	HandleResponse(ctx context.Context, rsp *http.Response) (err error)
+	HandleResponse(ctx context.Context) (err error)
+	SetResponse(rsp *http.Response)
 	GetResponse() *http.Response
 	GetBody() interface{}
 }
@@ -23,18 +24,22 @@ type DataResponse struct {
 	Codec    codec.Codec
 }
 
-func (resp *DataResponse) HandleResponse(ctx context.Context, rsp *http.Response) (err error) {
+func (resp *DataResponse) SetResponse(rsp *http.Response) {
+	resp.response = rsp
+}
+
+func (resp *DataResponse) HandleResponse(ctx context.Context) (err error) {
 	if assert.IsNil(resp.Codec) {
 		return errors.New("DataResponse codec is nil")
 	}
 
+	rsp := resp.GetResponse()
 	bb, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return err
 	}
 	_ = rsp.Body.Close()
 
-	resp.response = rsp
 	resp.response.Body = io.NopCloser(bytes.NewBuffer(bb))
 
 	if resp.Body != nil {

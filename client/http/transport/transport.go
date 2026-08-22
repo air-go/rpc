@@ -56,6 +56,14 @@ func (r *RPC) Send(ctx context.Context, request client.Request, response client.
 		return
 	}
 
+	if assert.IsNil(request) {
+		return errors.Errorf("request is nil")
+	}
+
+	if assert.IsNil(response) {
+		return errors.Errorf("response is nil")
+	}
+
 	ctx = logger.ForkContextOnlyMeta(ctx)
 
 	serviceName := request.GetServiceName()
@@ -231,6 +239,7 @@ func (r *RPC) send(ctx context.Context, cli *http.Client, service servicer.Servi
 	start := time.Now()
 	resp, err = cli.Do(req)
 
+	response.SetResponse(resp)
 	logger.AddField(ctx, logger.Reflect(logger.Cost, time.Since(start).Milliseconds()))
 	_ = service.Done(ctx, node, err)
 	_ = r.afterSend(ctx, req, resp)
@@ -248,7 +257,7 @@ func (r *RPC) send(ctx context.Context, cli *http.Client, service servicer.Servi
 		return
 	}
 
-	err = response.HandleResponse(ctx, resp)
+	err = response.HandleResponse(ctx)
 
 	logger.AddField(ctx, logger.Reflect(logger.Response, response.GetBody()))
 
