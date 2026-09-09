@@ -120,11 +120,6 @@ func (cli *Client) Produce(ctx context.Context, msg interface{}) (
 	return cli.publish(ctx, m)
 }
 
-type publishResult struct {
-	deliverTag uint64
-	success    bool
-}
-
 func (cli *Client) publish(ctx context.Context, m *ProduceMessage) (
 	response queue.ProduceResponse, err error,
 ) {
@@ -146,6 +141,25 @@ func (cli *Client) publish(ctx context.Context, m *ProduceMessage) (
 	return
 }
 
+var errPublishConfirmNack = errors.New("publish confirm nack")
+
+// waitConfirm blocks until the broker acknowledges (ack) or negatively
+// acknowledges (nack) a published message, or ctx is cancelled. It returns the
+// delivery tag together with a nil error on ack, a wrapped errPublishConfirmNack
+// on nack, or a wrapped ctx.Err() on context cancellation/timeout.
+func waitConfirm(ctx context.Context, ack, nack chan uint64) (tag uint64, err error) {
+	select {
+	case tag = <-ack:
+		return
+	case tag = <-nack:
+		err = errors.Wrapf(errPublishConfirmNack, "deliveryTag=%d", tag)
+		return
+	case <-ctx.Done():
+		err = errors.Wrap(ctx.Err(), "publish confirm wait ack timeout")
+		return
+	}
+}
+
 func (cli *Client) publishConfirm(ctx context.Context, m *ProduceMessage) (
 	response queue.ProduceResponse, err error,
 ) {
@@ -153,6 +167,7 @@ func (cli *Client) publishConfirm(ctx context.Context, m *ProduceMessage) (
 	if err != nil {
 		return
 	}
+	defer channel.Close()
 
 	if err = channel.Publish(
 		m.Exchange,
@@ -164,25 +179,16 @@ func (cli *Client) publishConfirm(ctx context.Context, m *ProduceMessage) (
 		return
 	}
 
-	result := make(chan publishResult)
-	select {
-	case r := <-ack:
-		result <- publishResult{
-			deliverTag: r,
-			success:    true,
+	tag, err := waitConfirm(ctx, ack, nack)
+	if err != nil {
+		if errors.Is(err, errPublishConfirmNack) {
+			cli.opts.logger.Error(ctx, "rabbitMQPublishConfirmNack", logger.Reflect("deliveryTag", tag))
+		} else {
+			cli.opts.logger.Error(ctx, "rabbitMQPublishConfirmTimeout", logger.Error(err))
 		}
-	case r := <-nack:
-		result <- publishResult{
-			deliverTag: r,
-			success:    false,
-		}
-	}
-	r := <-result
-	response.Offset = r.deliverTag
-	if !r.success {
-		err = errors.New("publish confirm nack")
 		return
 	}
+	response.DeliveryTag = tag
 
 	return
 }
