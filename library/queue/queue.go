@@ -9,6 +9,9 @@ type Consumer func(context.Context, interface{}) (reject, retry bool, err error)
 type ProduceResponse struct {
 	Partition int32
 	Offset    uint64
+	// DeliveryTag is the publisher-confirm delivery tag assigned by the broker.
+	// Only populated by rabbitmq publish-confirm; zero otherwise.
+	DeliveryTag uint64
 }
 
 type Queue interface {
