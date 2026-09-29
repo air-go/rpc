@@ -2,18 +2,34 @@ package orm
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/pkg/errors"
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/plugin/dbresolver"
 )
 
+type driverType string
+
+const (
+	driverMySQL    driverType = "mysql"
+	driverPostgres driverType = "postgres"
+)
+
+const (
+	defaultSSLMode  = "disable"
+	defaultTimeZone = "Asia/Shanghai"
+)
+
 type Config struct {
 	ServiceName string
-	Master      *instanceConfig
-	Slave       *instanceConfig
+	// Driver 为空时默认使用 mysql
+	Driver driverType
+	Master *instanceConfig
+	Slave  *instanceConfig
 }
 
 type instanceConfig struct {
@@ -25,6 +41,10 @@ type instanceConfig struct {
 	Charset  string
 	MaxOpen  int
 	MaxIdle  int
+	// SSLMode 仅 postgres 使用
+	SSLMode string
+	// TimeZone 对应 postgres 的 TimeZone、mysql 的 loc，为空时 mysql 不传 loc
+	TimeZone string
 }
 
 type Orm struct {
@@ -58,8 +78,8 @@ func NewOrm(cfg *Config, opts ...Option) (orm *Orm, err error) {
 		o(orm)
 	}
 
-	master := mysql.Open(getDSN(cfg.Master))
-	slave := mysql.Open(getDSN(cfg.Slave))
+	master := newDialector(cfg.Driver, cfg.Master)
+	slave := newDialector(cfg.Driver, cfg.Slave)
 
 	_orm, err := gorm.Open(master, orm.config)
 	if err != nil {
@@ -94,12 +114,49 @@ func (orm *Orm) UseRead() *gorm.DB {
 	return orm.Clauses(dbresolver.Read)
 }
 
-func getDSN(cfg *instanceConfig) string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=true",
+func newDialector(driver driverType, cfg *instanceConfig) gorm.Dialector {
+	switch driver {
+	case driverPostgres:
+		return postgres.Open(getPostgresDSN(cfg))
+	default:
+		return mysql.Open(getMySQLDSN(cfg))
+	}
+}
+
+func getMySQLDSN(cfg *instanceConfig) string {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=true",
 		cfg.User,
 		cfg.Password,
 		cfg.Host,
 		cfg.Port,
 		cfg.DB,
 		cfg.Charset)
+
+	// loc 含 "/" 等字符，必须转义
+	if cfg.TimeZone != "" {
+		dsn += "&loc=" + url.QueryEscape(cfg.TimeZone)
+	}
+
+	return dsn
+}
+
+func getPostgresDSN(cfg *instanceConfig) string {
+	sslMode := cfg.SSLMode
+	if sslMode == "" {
+		sslMode = defaultSSLMode
+	}
+
+	timeZone := cfg.TimeZone
+	if timeZone == "" {
+		timeZone = defaultTimeZone
+	}
+
+	return fmt.Sprintf("user=%s password=%s host=%s port=%s dbname=%s sslmode=%s TimeZone=%s",
+		cfg.User,
+		cfg.Password,
+		cfg.Host,
+		cfg.Port,
+		cfg.DB,
+		sslMode,
+		timeZone)
 }
