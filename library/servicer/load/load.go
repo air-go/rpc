@@ -9,13 +9,12 @@ import (
 	"github.com/air-go/rpc/library/config"
 	"github.com/air-go/rpc/library/discoverer"
 	df "github.com/air-go/rpc/library/discoverer/factory"
-	"github.com/air-go/rpc/library/etcd"
 	lf "github.com/air-go/rpc/library/loadbalancer/factory"
 	"github.com/air-go/rpc/library/servicer"
 	"github.com/air-go/rpc/library/servicer/service"
 )
 
-func LoadGlobPattern(ctx context.Context, path, suffix string, etcd *etcd.Etcd) (err error) {
+func LoadGlobPattern(ctx context.Context, path, suffix string) (err error) {
 	var (
 		dir   string
 		files []string
