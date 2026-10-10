@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/smartystreets/goconvey/convey"
@@ -19,7 +20,23 @@ func TestNewRedisClient(t *testing.T) {
 	})
 }
 
-func TestRedisClient_Dialer(t *testing.T) {}
+// TestRedisClient_Dialer guards against the data race where redis.NewClient's
+// MinIdleConns warm-up goroutines call Dialer before cli.Client is assigned.
+func TestRedisClient_Dialer(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		cli, err := NewRedisClient(&Config{
+			ServiceName:  "default_redis",
+			Host:         "127.0.0.1",
+			Port:         6390, // intentionally unreachable
+			MinIdleConns: 10,
+			PoolSize:     20,
+			DialTimeout:  50,
+		})
+		assert.Nil(t, err)
+		time.Sleep(time.Millisecond)
+		_ = cli.Close()
+	}
+}
 
 func TestRedisClient_OnConnect(t *testing.T) {
 	_ = (&RedisClient{}).OnConnect(context.Background(), &redis.Conn{})
