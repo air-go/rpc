@@ -19,6 +19,14 @@ type Config struct {
 	Host    string
 	Port    int
 
+	// Dialer creates new network connection and has priority over Network and Addr options.
+	// Default is the dialer of RedisClient.
+	Dialer func(ctx context.Context, network, addr string) (net.Conn, error)
+
+	// Hook that is called when new connection is established.
+	// Default is the hook of RedisClient.
+	OnConnect func(ctx context.Context, cn *redis.Conn) error
+
 	Username string
 	Password string
 	DB       int
@@ -89,11 +97,21 @@ func NewRedisClient(cfg *Config, opts ...OptionFunc) (*RedisClient, error) {
 		serviceName: cfg.ServiceName,
 	}
 
+	dialer := cfg.Dialer
+	if dialer == nil {
+		dialer = cli.Dialer
+	}
+
+	onConnect := cfg.OnConnect
+	if onConnect == nil {
+		onConnect = cli.OnConnect
+	}
+
 	cli.Client = redis.NewClient(&redis.Options{
 		Network:            cfg.Network,
 		Addr:               fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
-		Dialer:             cli.Dialer,
-		OnConnect:          cli.OnConnect,
+		Dialer:             dialer,
+		OnConnect:          onConnect,
 		Username:           cfg.Username,
 		Password:           cfg.Password,
 		DB:                 cfg.DB,
@@ -139,11 +157,14 @@ func (rc *RedisClient) Dialer(ctx context.Context, network, addr string) (net.Co
 	// }
 	// addr := fmt.Sprintf("%s:%d", node.Host(), node.Port())
 
+	// Don't read rc.Options() here: when MinIdleConns > 0, redis.NewClient warms up
+	// the pool in background goroutines before rc.Client is assigned, so the embedded
+	// client is still nil. Read the timeout from config instead.
 	netDialer := &net.Dialer{
-		Timeout:   rc.Options().DialTimeout,
+		Timeout:   rc.dialTimeout(),
 		KeepAlive: 5 * time.Minute,
 	}
-	if rc.config.TLSConfig == nil {
+	if rc.config == nil || rc.config.TLSConfig == nil {
 		return netDialer.DialContext(ctx, network, addr)
 	}
 	return tls.DialWithDialer(netDialer, network, addr, rc.config.TLSConfig)
@@ -151,4 +172,16 @@ func (rc *RedisClient) Dialer(ctx context.Context, network, addr string) (net.Co
 
 func (rc *RedisClient) OnConnect(ctx context.Context, cn *redis.Conn) (err error) {
 	return
+}
+
+// dialTimeout keeps the same semantics as go-redis Options.DialTimeout:
+// 0 means the 5s default, -1 means no timeout.
+func (rc *RedisClient) dialTimeout() time.Duration {
+	if rc.config == nil || rc.config.DialTimeout == 0 {
+		return 5 * time.Second
+	}
+	if rc.config.DialTimeout == -1 {
+		return 0
+	}
+	return milliseconds(rc.config.DialTimeout)
 }
