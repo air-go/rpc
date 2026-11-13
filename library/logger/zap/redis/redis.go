@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -33,10 +34,20 @@ type RedisConfig struct {
 // RedisLogger is go-redis logger Hook
 type RedisLogger struct {
 	*zapLogger.ZapLogger
-	config *RedisConfig
+	config      *RedisConfig
+	infoWriter  io.Writer
+	errorWriter io.Writer
 }
 
 type RedisOption func(rl *RedisLogger)
+
+// WithWriter sets both log destinations, overriding the rotating files created
+// from RedisConfig.InfoFile and RedisConfig.ErrorFile; a single writer is rejected.
+func WithWriter(infoWriter, errorWriter io.Writer) RedisOption {
+	return func(rl *RedisLogger) {
+		rl.infoWriter, rl.errorWriter = infoWriter, errorWriter
+	}
+}
 
 // NewRedisLogger
 func NewRedisLogger(config *RedisConfig, opts ...RedisOption) (rl *RedisLogger, err error) {
@@ -46,21 +57,22 @@ func NewRedisLogger(config *RedisConfig, opts ...RedisOption) (rl *RedisLogger, 
 		o(rl)
 	}
 
-	infoWriter, errWriter, err := logger.RotateWriter(config.InfoFile, config.ErrorFile)
+	infoWriter, errorWriter, err := logger.ResolveWriters(rl.infoWriter, rl.errorWriter, config.InfoFile, config.ErrorFile)
 	if err != nil {
-		return
+		return nil, err
 	}
+	rl.infoWriter, rl.errorWriter = infoWriter, errorWriter
 
 	l, err := zapLogger.NewLogger(
 		zapLogger.WithModule(logger.ModuleRedis),
 		zapLogger.WithServiceName(config.ServiceName),
 		zapLogger.WithCallerSkip(6),
-		zapLogger.WithInfoWriter(infoWriter),
-		zapLogger.WithErrorWriter(errWriter),
+		zapLogger.WithInfoWriter(rl.infoWriter),
+		zapLogger.WithErrorWriter(rl.errorWriter),
 		zapLogger.WithLevel(config.Level),
 	)
 	if err != nil {
-		return
+		return nil, err
 	}
 	rl.ZapLogger = l
 
