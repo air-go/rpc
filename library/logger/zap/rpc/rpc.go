@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"io"
 
 	"github.com/air-go/rpc/library/logger"
 	zapLogger "github.com/air-go/rpc/library/logger/zap"
@@ -18,10 +19,20 @@ type RPCConfig struct {
 // RPCLogger is go-redis logger Hook
 type RPCLogger struct {
 	*zapLogger.ZapLogger
-	config *RPCConfig
+	config      *RPCConfig
+	infoWriter  io.Writer
+	errorWriter io.Writer
 }
 
 type RPCOption func(rl *RPCLogger)
+
+// WithWriter sets both log destinations, overriding the rotating files created
+// from RPCConfig.InfoFile and RPCConfig.ErrorFile; a single writer is rejected.
+func WithWriter(infoWriter, errorWriter io.Writer) RPCOption {
+	return func(rl *RPCLogger) {
+		rl.infoWriter, rl.errorWriter = infoWriter, errorWriter
+	}
+}
 
 // NewRPCLogger
 func NewRPCLogger(config *RPCConfig, opts ...RPCOption) (rl *RPCLogger, err error) {
@@ -31,20 +42,21 @@ func NewRPCLogger(config *RPCConfig, opts ...RPCOption) (rl *RPCLogger, err erro
 		o(rl)
 	}
 
-	infoWriter, errWriter, err := logger.RotateWriter(config.InfoFile, config.ErrorFile)
+	infoWriter, errorWriter, err := logger.ResolveWriters(rl.infoWriter, rl.errorWriter, config.InfoFile, config.ErrorFile)
 	if err != nil {
-		return
+		return nil, err
 	}
+	rl.infoWriter, rl.errorWriter = infoWriter, errorWriter
 
 	l, err := zapLogger.NewLogger(
 		zapLogger.WithCallerSkip(4),
 		zapLogger.WithModule(logger.ModuleRPC),
-		zapLogger.WithInfoWriter(infoWriter),
-		zapLogger.WithErrorWriter(errWriter),
+		zapLogger.WithInfoWriter(rl.infoWriter),
+		zapLogger.WithErrorWriter(rl.errorWriter),
 		zapLogger.WithLevel(config.Level),
 	)
 	if err != nil {
-		return
+		return nil, err
 	}
 	rl.ZapLogger = l
 

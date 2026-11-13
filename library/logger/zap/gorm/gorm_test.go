@@ -1,8 +1,10 @@
 package gorm
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -20,6 +22,40 @@ func TestNewGorm(t *testing.T) {
 			assert.NotNil(t, l)
 		})
 	})
+}
+
+func TestNewGormWithWriter(t *testing.T) {
+	ctx := logger.InitFieldsContainer(context.Background())
+	fc := func() (string, int64) { return "select * from table;", 0 }
+
+	convey.Convey("TestNewGormWithWriter", t, func() {
+		convey.Convey("injected writer receives the error log", func() {
+			// NewGorm replaces the package level gormLogger.Default, keep the suite isolated.
+			old := gormLogger.Default
+			defer func() { gormLogger.Default = old }()
+
+			dir := t.TempDir()
+			infoFile := filepath.Join(dir, "info.log")
+			errFile := filepath.Join(dir, "error.log")
+			buf := &bytes.Buffer{}
+
+			l, err := NewGorm(&GormConfig{Level: 2, InfoFile: infoFile, ErrorFile: errFile}, WithWriter(buf, buf))
+			assert.Nil(t, err)
+
+			l.Trace(ctx, time.Now(), fc, errors.New("boom"))
+
+			assert.Contains(t, buf.String(), "boom")
+			assert.NoFileExists(t, infoFile)
+			assert.NoFileExists(t, errFile)
+		})
+	})
+}
+
+func TestNewGormRejectsSingleWriter(t *testing.T) {
+	l, err := NewGorm(&GormConfig{}, WithWriter(&bytes.Buffer{}, nil))
+
+	assert.NotNil(t, err)
+	assert.Nil(t, l)
 }
 
 func TestGormLogger_LogMode(t *testing.T) {

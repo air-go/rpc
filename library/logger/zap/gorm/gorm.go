@@ -3,6 +3,7 @@ package gorm
 import (
 	"context"
 	"errors"
+	"io"
 	"runtime"
 	"strings"
 	"time"
@@ -37,11 +38,21 @@ type GormLogger struct {
 	SlowThreshold             time.Duration
 	SkipCallerLookup          bool
 	IgnoreRecordNotFoundError bool
+	infoWriter                io.Writer
+	errorWriter               io.Writer
 }
 
 type GormOption func(gl *GormLogger)
 
 var _ gormLogger.Interface = (*GormLogger)(nil)
+
+// WithWriter sets both log destinations, overriding the rotating files created
+// from GormConfig.InfoFile and GormConfig.ErrorFile; a single writer is rejected.
+func WithWriter(infoWriter, errorWriter io.Writer) GormOption {
+	return func(gl *GormLogger) {
+		gl.infoWriter, gl.errorWriter = infoWriter, errorWriter
+	}
+}
 
 func NewGorm(config *GormConfig, opts ...GormOption) (gl *GormLogger, err error) {
 	gl = &GormLogger{
@@ -68,20 +79,21 @@ func NewGorm(config *GormConfig, opts ...GormOption) (gl *GormLogger, err error)
 		level = zapcore.InfoLevel.String()
 	}
 
-	infoWriter, errWriter, err := logger.RotateWriter(config.InfoFile, config.ErrorFile)
+	infoWriter, errorWriter, err := logger.ResolveWriters(gl.infoWriter, gl.errorWriter, config.InfoFile, config.ErrorFile)
 	if err != nil {
-		return
+		return nil, err
 	}
+	gl.infoWriter, gl.errorWriter = infoWriter, errorWriter
 
 	l, err := zapLogger.NewLogger(
 		zapLogger.WithModule(logger.ModuleMySQL),
 		zapLogger.WithServiceName(config.ServiceName),
-		zapLogger.WithInfoWriter(infoWriter),
-		zapLogger.WithErrorWriter(errWriter),
+		zapLogger.WithInfoWriter(gl.infoWriter),
+		zapLogger.WithErrorWriter(gl.errorWriter),
 		zapLogger.WithLevel(level),
 	)
 	if err != nil {
-		return
+		return nil, err
 	}
 	gl.Logger = l.Logger
 

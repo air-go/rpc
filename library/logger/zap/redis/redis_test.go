@@ -1,8 +1,10 @@
 package redis
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"github.com/air-go/rpc/library/logger"
@@ -10,6 +12,40 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestNewRedisLoggerWithWriter(t *testing.T) {
+	ctx := logger.InitFieldsContainer(context.Background())
+
+	convey.Convey("TestNewRedisLoggerWithWriter", t, func() {
+		convey.Convey("injected writer receives command log with config host", func() {
+			dir := t.TempDir()
+			infoFile := filepath.Join(dir, "info.log")
+			errFile := filepath.Join(dir, "error.log")
+			buf := &bytes.Buffer{}
+
+			l, err := NewRedisLogger(&RedisConfig{
+				Level: "info", ServiceName: "test", Host: "127.0.0.1", Port: 6379,
+				InfoFile: infoFile, ErrorFile: errFile,
+			}, WithWriter(buf, buf))
+			assert.Nil(t, err)
+
+			err = l.AfterProcess(ctx, redis.NewBoolCmd(ctx))
+			assert.Nil(t, err)
+
+			assert.Contains(t, buf.String(), "127.0.0.1")
+			assert.Contains(t, buf.String(), "6379")
+			assert.NoFileExists(t, infoFile)
+			assert.NoFileExists(t, errFile)
+		})
+	})
+}
+
+func TestNewRedisLoggerRejectsSingleWriter(t *testing.T) {
+	l, err := NewRedisLogger(&RedisConfig{}, WithWriter(&bytes.Buffer{}, nil))
+
+	assert.NotNil(t, err)
+	assert.Nil(t, l)
+}
 
 func TestNewRedisLogger(t *testing.T) {
 	convey.Convey("TestNewRedisLogger", t, func() {
